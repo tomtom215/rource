@@ -69,11 +69,13 @@ impl Rource {
     /// Starts playback.
     pub fn play(&mut self) {
         self.playback.play();
+        self.wake_renderer();
     }
 
     /// Pauses playback.
     pub fn pause(&mut self) {
         self.playback.pause();
+        self.wake_renderer();
     }
 
     /// Returns whether playback is active.
@@ -86,6 +88,7 @@ impl Rource {
     #[wasm_bindgen(js_name = togglePlay)]
     pub fn toggle_play(&mut self) {
         self.playback.toggle_play();
+        self.wake_renderer();
     }
 
     /// Seeks to a specific commit index.
@@ -132,6 +135,7 @@ impl Rource {
 
             // Position camera to show content
             self.fit_camera_to_content();
+            self.wake_renderer();
         }
     }
 
@@ -183,6 +187,7 @@ impl Rource {
             10.0
         };
         self.settings.playback.seconds_per_day = speed.clamp(0.01, 1000.0);
+        self.wake_renderer();
     }
 
     /// Gets the current playback speed.

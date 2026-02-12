@@ -40,6 +40,17 @@ const YIELD_THRESHOLD_MS = 50;
  */
 const YIELD_INTERVAL_FRAMES = 100;
 
+/**
+ * Number of consecutive idle frames (WASM frame() returns false) before
+ * the JS animation loop stops entirely (Level 2 power management).
+ *
+ * After the Rust render_cooldown expires (5s), frame() returns false.
+ * We wait an additional 60 frames (~1s at 60fps) to confirm the scene
+ * is truly idle before stopping the loop. Total time from last visual
+ * activity to full idle: ~6 seconds.
+ */
+const IDLE_THRESHOLD_FRAMES = 60;
+
 // =============================================================================
 // Module State
 // =============================================================================
@@ -80,6 +91,26 @@ let legacyTimeoutId = null;
  */
 let yieldCounter = 0;
 
+/**
+ * Counter of consecutive frames where WASM reported no visual activity.
+ * When this exceeds IDLE_THRESHOLD_FRAMES, the animation loop is stopped
+ * entirely (Level 2: idle detection).
+ */
+let idleFrameCount = 0;
+
+/**
+ * Whether the animation loop is in idle mode (Level 2).
+ * When true, the loop is stopped and wake event listeners are active.
+ * Any user interaction (mouse, keyboard, touch, wheel) restarts the loop.
+ */
+let isIdle = false;
+
+/**
+ * Registered wake event listeners for cleanup.
+ * @type {Array<{target: EventTarget, type: string, handler: Function}>}
+ */
+const wakeListeners = [];
+
 // =============================================================================
 // Public API - Callbacks
 // =============================================================================
@@ -115,6 +146,18 @@ export function resizeCanvas() {
     if (!canvas || !container) return;
 
     const rect = container.getBoundingClientRect();
+
+    // Guard: Do not resize canvas to 0×0 when the container is hidden.
+    // When #viz-panel is hidden (e.g., analytics view is active),
+    // getBoundingClientRect() returns 0×0. Setting canvas.width = 0
+    // destroys the WebGPU swapchain backing store, causing Dawn to emit
+    // cascading errors: Invalid Texture → Invalid TextureView →
+    // Invalid CommandBuffer on the next frame that tries to render.
+    // Keep the canvas at its current dimensions until the container is visible.
+    if (rect.width < 1 || rect.height < 1) {
+        return;
+    }
+
     // Get device pixel ratio, clamped to reasonable range for performance
     // Mobile devices often have DPR of 2-3, ultra-high-DPI can be 4+
     const dpr = Math.min(window.devicePixelRatio || 1, 3);
@@ -216,9 +259,14 @@ export function animate(timestamp, generation = animationGeneration) {
         return;
     }
 
+    /** Whether WASM reports visual activity this frame. */
+    let hasVisualActivity = true;
+
     if (rource) {
-        // Render the frame via WASM
-        safeWasmCall('frame', () => rource.frame(timestamp), undefined);
+        // Render the frame via WASM.
+        // frame() returns true while there is visual activity or cooldown,
+        // false when the scene is fully idle (Level 3 render cooldown expired).
+        hasVisualActivity = safeWasmCall('frame', () => rource.frame(timestamp), true);
 
         // Track FPS statistics in uncapped mode for peak/average display
         if (isUncapped) {
@@ -233,6 +281,21 @@ export function animate(timestamp, generation = animationGeneration) {
 
         // Periodically update performance metrics overlay
         trackFramePerformance();
+    }
+
+    // ---- Level 2: Idle Detection ----
+    // When WASM signals no visual activity for IDLE_THRESHOLD_FRAMES
+    // consecutive frames, stop the animation loop entirely to eliminate
+    // all CPU/GPU utilization. Wake listeners will restart it on interaction.
+    if (hasVisualActivity) {
+        idleFrameCount = 0;
+    } else {
+        idleFrameCount++;
+        if (idleFrameCount >= IDLE_THRESHOLD_FRAMES) {
+            frameInProgress = false;
+            enterIdleMode();
+            return;
+        }
     }
 
     // Second race condition check after frame processing
@@ -351,6 +414,87 @@ export function resetCrashState() {
 }
 
 // =============================================================================
+// Level 2: Idle Mode Management
+// =============================================================================
+
+/**
+ * Enters idle mode: stops the animation loop and registers wake listeners.
+ *
+ * Called when WASM has reported no visual activity for IDLE_THRESHOLD_FRAMES
+ * consecutive frames. Any user interaction (mouse, keyboard, touch, wheel)
+ * will call wakeFromIdle() to restart the loop.
+ */
+function enterIdleMode() {
+    if (isIdle) return;
+    isIdle = true;
+
+    // Stop the animation loop (GPU utilization drops to zero)
+    stopAnimation();
+
+    // Register wake listeners on document/canvas to detect user interaction
+    const canvas = getElement('canvas');
+    const wakeEvents = [
+        { target: document, type: 'mousedown' },
+        { target: document, type: 'keydown' },
+        { target: document, type: 'touchstart' },
+        { target: document, type: 'wheel' },
+        { target: document, type: 'pointerdown' },
+    ];
+    // Also listen for mousemove on canvas specifically (hover shows coordinates)
+    if (canvas) {
+        wakeEvents.push({ target: canvas, type: 'mousemove' });
+    }
+
+    for (const { target, type } of wakeEvents) {
+        const handler = () => wakeFromIdle();
+        target.addEventListener(type, handler, { once: true, passive: true });
+        wakeListeners.push({ target, type, handler });
+    }
+
+    console.debug('Rource: Entered idle mode (animation loop stopped)');
+}
+
+/**
+ * Wakes from idle mode: removes wake listeners and restarts animation.
+ *
+ * Called by wake event listeners when the user interacts with the page,
+ * or by the Page Visibility handler when the tab becomes visible again.
+ * Also called by other modules that programmatically change visual state.
+ *
+ * Safe to call multiple times or when not in idle mode.
+ */
+export function wakeFromIdle() {
+    if (!isIdle) return;
+    isIdle = false;
+    idleFrameCount = 0;
+
+    // Remove all wake listeners (some may have already fired via { once: true })
+    for (const { target, type, handler } of wakeListeners) {
+        target.removeEventListener(type, handler);
+    }
+    wakeListeners.length = 0;
+
+    // Wake the WASM renderer so the next frame() call renders
+    const rource = getRource();
+    if (rource) {
+        safeWasmCall('wakeRenderer', () => rource.wakeRenderer(), undefined);
+    }
+
+    // Restart the animation loop
+    startAnimation();
+
+    console.debug('Rource: Woke from idle mode (animation loop restarted)');
+}
+
+/**
+ * Returns whether the animation loop is in idle mode.
+ * @returns {boolean} True if idle (animation loop stopped due to inactivity)
+ */
+export function isIdleMode() {
+    return isIdle;
+}
+
+// =============================================================================
 // Animation Control
 // =============================================================================
 
@@ -397,6 +541,9 @@ export function startAnimation() {
         // Animation already running
         return;
     }
+
+    // Clear idle state when explicitly starting animation
+    idleFrameCount = 0;
 
     const isUncapped = get('uncappedFps');
     const generation = animationGeneration;

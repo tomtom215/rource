@@ -39,12 +39,14 @@ impl Rource {
         #[cfg(target_arch = "wasm32")]
         if let Some(wgpu_renderer) = self.backend.as_wgpu_mut() {
             wgpu_renderer.set_bloom_enabled(enabled);
+            self.wake_renderer();
             return;
         }
 
         if let Some(webgl2_renderer) = self.backend.as_webgl2_mut() {
             webgl2_renderer.set_bloom_enabled(enabled);
         }
+        self.wake_renderer();
     }
 
     /// Sets the background color (hex string like "#000000" or "000000").
@@ -59,6 +61,7 @@ impl Rource {
         if hex.len() == 6 {
             if let Ok(val) = u32::from_str_radix(hex, 16) {
                 self.settings.display.background_color = Color::from_hex(val);
+                self.wake_renderer();
             }
         }
     }
@@ -67,6 +70,7 @@ impl Rource {
     #[wasm_bindgen(js_name = setShowLabels)]
     pub fn set_show_labels(&mut self, show: bool) {
         self.show_labels = show;
+        self.wake_renderer();
     }
 
     /// Gets whether labels are being shown.
@@ -81,6 +85,7 @@ impl Rource {
     #[wasm_bindgen(js_name = setFontSize)]
     pub fn set_font_size(&mut self, size: f32) {
         self.settings.display.font_size = size.clamp(4.0, 200.0);
+        self.wake_renderer();
     }
 
     /// Gets the current font size for labels.
@@ -105,6 +110,7 @@ impl Rource {
     #[wasm_bindgen(js_name = enableRourceWatermark)]
     pub fn enable_rource_watermark(&mut self) {
         self.settings.overlay.watermark = WatermarkSettings::rource_brand();
+        self.wake_renderer();
     }
 
     /// Disables the watermark.
@@ -116,6 +122,7 @@ impl Rource {
     #[wasm_bindgen(js_name = disableWatermark)]
     pub fn disable_watermark(&mut self) {
         self.settings.overlay.watermark.enabled = false;
+        self.wake_renderer();
     }
 
     /// Returns whether the watermark is enabled.
@@ -140,6 +147,7 @@ impl Rource {
     #[wasm_bindgen(js_name = setWatermarkEnabled)]
     pub fn set_watermark_enabled(&mut self, enabled: bool) {
         self.settings.overlay.watermark.enabled = enabled;
+        self.wake_renderer();
     }
 
     /// Sets the primary watermark text.
@@ -151,6 +159,7 @@ impl Rource {
     #[wasm_bindgen(js_name = setWatermarkText)]
     pub fn set_watermark_text(&mut self, text: &str) {
         self.settings.overlay.watermark.text = text.to_string();
+        self.wake_renderer();
     }
 
     /// Sets the secondary watermark text (displayed below the primary text).
@@ -168,6 +177,7 @@ impl Rource {
         } else {
             self.settings.overlay.watermark.subtext = Some(text.to_string());
         }
+        self.wake_renderer();
     }
 
     /// Sets the watermark position.
@@ -186,6 +196,7 @@ impl Rource {
     pub fn set_watermark_position(&mut self, position: &str) {
         if let Some(pos) = WatermarkPosition::from_str(position) {
             self.settings.overlay.watermark.position = pos;
+            self.wake_renderer();
         }
     }
 
@@ -198,6 +209,7 @@ impl Rource {
     #[wasm_bindgen(js_name = setWatermarkOpacity)]
     pub fn set_watermark_opacity(&mut self, opacity: f32) {
         self.settings.overlay.watermark.opacity = opacity.clamp(0.0, 1.0);
+        self.wake_renderer();
     }
 
     /// Gets the current watermark opacity.
@@ -215,6 +227,7 @@ impl Rource {
     #[wasm_bindgen(js_name = setWatermarkFontSize)]
     pub fn set_watermark_font_size(&mut self, size: f32) {
         self.settings.overlay.watermark.font_size = size.clamp(4.0, 100.0);
+        self.wake_renderer();
     }
 
     /// Sets the watermark text color (hex string like "#FFFFFF" or "FFFFFF").
@@ -229,6 +242,7 @@ impl Rource {
         if hex.len() == 6 {
             if let Ok(val) = u32::from_str_radix(hex, 16) {
                 self.settings.overlay.watermark.color = Color::from_hex(val);
+                self.wake_renderer();
             }
         }
     }
@@ -242,6 +256,7 @@ impl Rource {
     #[wasm_bindgen(js_name = setWatermarkMargin)]
     pub fn set_watermark_margin(&mut self, margin: f32) {
         self.settings.overlay.watermark.margin = margin.max(0.0);
+        self.wake_renderer();
     }
 
     /// Sets a custom watermark with both primary and secondary text.
@@ -261,6 +276,7 @@ impl Rource {
         } else {
             self.settings.overlay.watermark.subtext = Some(subtext.to_string());
         }
+        self.wake_renderer();
     }
 
     // ========================================================================
@@ -453,6 +469,8 @@ impl Rource {
         // Suppress unused variable warning on non-wasm32 targets
         #[cfg(not(target_arch = "wasm32"))]
         let _ = enabled;
+
+        self.wake_renderer();
     }
 
     /// Returns whether vsync is currently enabled.

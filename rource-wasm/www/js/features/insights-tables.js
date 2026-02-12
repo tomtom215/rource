@@ -11,7 +11,7 @@
 
 import {
     formatNumber, formatFixed, formatInt, formatPercentage,
-    truncatePath, escapeHtml, capitalize
+    truncatePath, escapeHtml, capitalize, renderKeyValueList
 } from './insights-utils.js';
 
 /**
@@ -382,6 +382,350 @@ export function renderKnowledgeDistributionTable(dirs) {
     html += '</tbody></table></div>';
     if (hidden.length > 0) {
         html += `<button type="button" class="insights-show-all">Show all (${dirs.length})</button>`;
+    }
+    return html;
+}
+
+/**
+ * Renders the churn volatility table (per-file CV scores).
+ * Field names verified: insights.rs write_churn_volatility_json
+ *   path, cv, totalChurn, activeWindows, volatilityClass
+ */
+export function renderChurnVolatilityTable(files) {
+    const sorted = [...files].sort((a, b) => (b.cv || 0) - (a.cv || 0));
+    const visible = sorted.slice(0, 10);
+    const hidden = sorted.slice(10);
+    let html = `<div class="insights-table-wrap">
+        <table class="insights-table">
+            <thead><tr>
+                <th scope="col">File</th>
+                <th scope="col" class="num">CV</th>
+                <th scope="col" class="num">Churn</th>
+                <th scope="col">Class</th>
+            </tr></thead>
+            <tbody>`;
+    for (const f of visible) {
+        const riskClass = (f.cv || 0) >= 2.0 ? 'risk-high' : (f.cv || 0) >= 1.0 ? 'risk-medium' : '';
+        html += `<tr class="${riskClass}">
+            <td class="filepath" title="${escapeHtml(f.path || '')}">${escapeHtml(truncatePath(f.path || ''))}</td>
+            <td class="num">${formatNumber(f.cv, 2)}</td>
+            <td class="num">${formatNumber(f.totalChurn, 1)}</td>
+            <td>${escapeHtml(capitalize(f.volatilityClass || 'N/A'))}</td>
+        </tr>`;
+    }
+    for (const f of hidden) {
+        html += `<tr class="insights-hidden-row">
+            <td class="filepath" title="${escapeHtml(f.path || '')}">${escapeHtml(truncatePath(f.path || ''))}</td>
+            <td class="num">${formatNumber(f.cv, 2)}</td>
+            <td class="num">${formatNumber(f.totalChurn, 1)}</td>
+            <td>${escapeHtml(capitalize(f.volatilityClass || 'N/A'))}</td>
+        </tr>`;
+    }
+    html += '</tbody></table></div>';
+    if (hidden.length > 0) {
+        html += `<button type="button" class="insights-show-all">Show all (${files.length})</button>`;
+    }
+    return html;
+}
+
+/**
+ * Renders the truck factor developer criticality table.
+ * Field names verified: insights.rs write_truck_factor_json
+ *   name, totalDoa, expertFileCount, soleExpertCount
+ */
+export function renderTruckFactorTable(devs) {
+    const sorted = [...devs].sort((a, b) => (b.totalDoa || 0) - (a.totalDoa || 0));
+    const visible = sorted.slice(0, 10);
+    const hidden = sorted.slice(10);
+    let html = `<div class="insights-table-wrap">
+        <table class="insights-table">
+            <thead><tr>
+                <th scope="col">Developer</th>
+                <th scope="col" class="num">DOA</th>
+                <th scope="col" class="num">Expert Files</th>
+                <th scope="col" class="num">Sole Expert</th>
+            </tr></thead>
+            <tbody>`;
+    for (const d of visible) {
+        const riskClass = (d.soleExpertCount || 0) > 5 ? 'risk-high' : (d.soleExpertCount || 0) > 0 ? 'risk-medium' : '';
+        html += `<tr class="${riskClass}">
+            <td>${escapeHtml(d.name || '')}</td>
+            <td class="num">${formatNumber(d.totalDoa, 1)}</td>
+            <td class="num">${formatInt(d.expertFileCount || 0)}</td>
+            <td class="num">${formatInt(d.soleExpertCount || 0)}</td>
+        </tr>`;
+    }
+    for (const d of hidden) {
+        html += `<tr class="insights-hidden-row">
+            <td>${escapeHtml(d.name || '')}</td>
+            <td class="num">${formatNumber(d.totalDoa, 1)}</td>
+            <td class="num">${formatInt(d.expertFileCount || 0)}</td>
+            <td class="num">${formatInt(d.soleExpertCount || 0)}</td>
+        </tr>`;
+    }
+    html += '</tbody></table></div>';
+    if (hidden.length > 0) {
+        html += `<button type="button" class="insights-show-all">Show all (${devs.length})</button>`;
+    }
+    return html;
+}
+
+/**
+ * Renders the turnover impact departed developers table.
+ * Field names verified: insights.rs write_turnover_impact_json
+ *   name, daysSinceLast, ownedFiles, orphanedFiles, impactScore
+ */
+export function renderTurnoverImpactTable(devs) {
+    const sorted = [...devs].sort((a, b) => (b.impactScore || 0) - (a.impactScore || 0));
+    const visible = sorted.slice(0, 10);
+    const hidden = sorted.slice(10);
+    let html = `<div class="insights-table-wrap">
+        <table class="insights-table">
+            <thead><tr>
+                <th scope="col">Developer</th>
+                <th scope="col" class="num">Days Gone</th>
+                <th scope="col" class="num">Orphaned</th>
+                <th scope="col" class="num">Impact</th>
+            </tr></thead>
+            <tbody>`;
+    for (const d of visible) {
+        const riskClass = (d.impactScore || 0) > 0.5 ? 'risk-high' : (d.impactScore || 0) > 0.2 ? 'risk-medium' : '';
+        html += `<tr class="${riskClass}">
+            <td>${escapeHtml(d.name || '')}</td>
+            <td class="num">${formatInt(d.daysSinceLast || 0)}</td>
+            <td class="num">${formatInt(d.orphanedFiles || 0)} / ${formatInt(d.ownedFiles || 0)}</td>
+            <td class="num">${formatPercentage(d.impactScore)}</td>
+        </tr>`;
+    }
+    for (const d of hidden) {
+        html += `<tr class="insights-hidden-row">
+            <td>${escapeHtml(d.name || '')}</td>
+            <td class="num">${formatInt(d.daysSinceLast || 0)}</td>
+            <td class="num">${formatInt(d.orphanedFiles || 0)} / ${formatInt(d.ownedFiles || 0)}</td>
+            <td class="num">${formatPercentage(d.impactScore)}</td>
+        </tr>`;
+    }
+    html += '</tbody></table></div>';
+    if (hidden.length > 0) {
+        html += `<button type="button" class="insights-show-all">Show all (${devs.length})</button>`;
+    }
+    return html;
+}
+
+/**
+ * Renders the commit complexity table (top complex/tangled commits).
+ * Field names verified: insights.rs write_commit_complexity_json
+ *   author, fileCount, dirCount, complexityScore, isTangled
+ */
+export function renderCommitComplexityTable(commits) {
+    const sorted = [...commits].sort((a, b) => (b.complexityScore || 0) - (a.complexityScore || 0));
+    const visible = sorted.slice(0, 10);
+    const hidden = sorted.slice(10, 50);
+    let html = `<div class="insights-table-wrap">
+        <table class="insights-table">
+            <thead><tr>
+                <th scope="col">Author</th>
+                <th scope="col" class="num">Files</th>
+                <th scope="col" class="num">Dirs</th>
+                <th scope="col" class="num">Score</th>
+                <th scope="col">Tangled</th>
+            </tr></thead>
+            <tbody>`;
+    for (const c of visible) {
+        const riskClass = c.isTangled ? 'risk-high' : '';
+        html += `<tr class="${riskClass}">
+            <td>${escapeHtml(c.author || '')}</td>
+            <td class="num">${formatInt(c.fileCount || 0)}</td>
+            <td class="num">${formatInt(c.dirCount || 0)}</td>
+            <td class="num">${formatNumber(c.complexityScore, 1)}</td>
+            <td>${c.isTangled ? 'Yes' : 'No'}</td>
+        </tr>`;
+    }
+    for (const c of hidden) {
+        html += `<tr class="insights-hidden-row">
+            <td>${escapeHtml(c.author || '')}</td>
+            <td class="num">${formatInt(c.fileCount || 0)}</td>
+            <td class="num">${formatInt(c.dirCount || 0)}</td>
+            <td class="num">${formatNumber(c.complexityScore, 1)}</td>
+            <td>${c.isTangled ? 'Yes' : 'No'}</td>
+        </tr>`;
+    }
+    html += '</tbody></table></div>';
+    if (hidden.length > 0) {
+        html += `<button type="button" class="insights-show-all">Show all (${Math.min(commits.length, 50)})</button>`;
+    }
+    return html;
+}
+
+/**
+ * Renders the defect-introducing change patterns table.
+ * Field names verified: insights.rs write_defect_patterns_json
+ *   path, burstAfterLarge, largeCommitAppearances, score, totalEdits
+ */
+export function renderDefectPatternsTable(files) {
+    const sorted = [...files].sort((a, b) => (b.score || 0) - (a.score || 0));
+    const visible = sorted.slice(0, 10);
+    const hidden = sorted.slice(10);
+    let html = `<div class="insights-table-wrap">
+        <table class="insights-table">
+            <thead><tr>
+                <th scope="col">File</th>
+                <th scope="col" class="num">Score</th>
+                <th scope="col" class="num">Bursts</th>
+                <th scope="col" class="num">Edits</th>
+            </tr></thead>
+            <tbody>`;
+    for (const f of visible) {
+        const riskClass = (f.score || 0) > 0.5 ? 'risk-high' : (f.score || 0) > 0.2 ? 'risk-medium' : '';
+        html += `<tr class="${riskClass}">
+            <td class="filepath" title="${escapeHtml(f.path || '')}">${escapeHtml(truncatePath(f.path || ''))}</td>
+            <td class="num">${formatNumber(f.score, 2)}</td>
+            <td class="num">${formatInt(f.burstAfterLarge || 0)} / ${formatInt(f.largeCommitAppearances || 0)}</td>
+            <td class="num">${formatInt(f.totalEdits || 0)}</td>
+        </tr>`;
+    }
+    for (const f of hidden) {
+        html += `<tr class="insights-hidden-row">
+            <td class="filepath" title="${escapeHtml(f.path || '')}">${escapeHtml(truncatePath(f.path || ''))}</td>
+            <td class="num">${formatNumber(f.score, 2)}</td>
+            <td class="num">${formatInt(f.burstAfterLarge || 0)} / ${formatInt(f.largeCommitAppearances || 0)}</td>
+            <td class="num">${formatInt(f.totalEdits || 0)}</td>
+        </tr>`;
+    }
+    html += '</tbody></table></div>';
+    if (hidden.length > 0) {
+        html += `<button type="button" class="insights-show-all">Show all (${files.length})</button>`;
+    }
+    return html;
+}
+
+/**
+ * Renders the language/technology distribution table.
+ * Field names verified: insights.rs write_tech_distribution_json
+ *   name, fileCount, percentage, extensions
+ */
+export function renderTechDistributionTable(languages) {
+    const visible = languages.slice(0, 10);
+    const hidden = languages.slice(10);
+    let html = `<div class="insights-table-wrap">
+        <table class="insights-table">
+            <thead><tr>
+                <th scope="col">Language</th>
+                <th scope="col" class="num">Files</th>
+                <th scope="col" class="num">Share</th>
+                <th scope="col">Extensions</th>
+            </tr></thead>
+            <tbody>`;
+    for (const l of visible) {
+        html += `<tr>
+            <td>${escapeHtml(l.name || '')}</td>
+            <td class="num">${formatInt(l.fileCount || 0)}</td>
+            <td class="num">${formatNumber(l.percentage, 1)}%</td>
+            <td class="filepath">${escapeHtml((l.extensions || []).join(', '))}</td>
+        </tr>`;
+    }
+    for (const l of hidden) {
+        html += `<tr class="insights-hidden-row">
+            <td>${escapeHtml(l.name || '')}</td>
+            <td class="num">${formatInt(l.fileCount || 0)}</td>
+            <td class="num">${formatNumber(l.percentage, 1)}%</td>
+            <td class="filepath">${escapeHtml((l.extensions || []).join(', '))}</td>
+        </tr>`;
+    }
+    html += '</tbody></table></div>';
+    if (hidden.length > 0) {
+        html += `<button type="button" class="insights-show-all">Show all (${languages.length})</button>`;
+    }
+    return html;
+}
+
+/**
+ * Renders the commit activity heatmap as a 7x24 grid.
+ * Field names verified: insights.rs write_activity_heatmap_json
+ *   grid (7x24 array), totalCommits, peakDay, peakDayName, peakHour,
+ *   peakCount, workHoursPct, weekendPct
+ */
+export function renderActivityHeatmapTable(heatmap) {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const grid = heatmap.grid || [];
+
+    // Find max for color scaling
+    let maxCount = 0;
+    for (const row of grid) {
+        for (const count of row) {
+            if (count > maxCount) maxCount = count;
+        }
+    }
+
+    // Summary key-value pairs
+    let html = renderKeyValueList([
+        ['Peak Day', escapeHtml(heatmap.peakDayName || days[heatmap.peakDay] || 'N/A')],
+        ['Peak Hour', `${heatmap.peakHour || 0}:00 UTC`],
+        ['Peak Commits', formatInt(heatmap.peakCount || 0)],
+        ['Work Hours', formatNumber(heatmap.workHoursPct, 1) + '%'],
+        ['Weekend', formatNumber(heatmap.weekendPct, 1) + '%'],
+    ]);
+
+    // Heatmap grid
+    html += '<div class="insights-heatmap-wrap"><table class="insights-heatmap">';
+    html += '<thead><tr><th></th>';
+    for (let h = 0; h < 24; h += 3) {
+        html += `<th colspan="3" class="num">${h}:00</th>`;
+    }
+    html += '</tr></thead><tbody>';
+    for (let d = 0; d < 7 && d < grid.length; d++) {
+        html += `<tr><td class="insights-heatmap-day">${days[d]}</td>`;
+        for (let h = 0; h < 24; h++) {
+            const count = grid[d][h] || 0;
+            const intensity = maxCount > 0 ? count / maxCount : 0;
+            const level = intensity === 0 ? 0 : intensity < 0.25 ? 1 : intensity < 0.5 ? 2 : intensity < 0.75 ? 3 : 4;
+            html += `<td class="insights-heatmap-cell level-${level}" title="${days[d]} ${h}:00 \u2014 ${count} commit${count !== 1 ? 's' : ''}">${count > 0 ? count : ''}</td>`;
+        }
+        html += '</tr>';
+    }
+    html += '</tbody></table></div>';
+    return html;
+}
+
+/**
+ * Renders the developer technology expertise table.
+ * Field names verified: insights.rs write_tech_expertise_json
+ *   name, totalCommits, techCount, primaryTech, technologies[]
+ */
+export function renderTechExpertiseTable(developers) {
+    const sorted = [...developers].sort((a, b) => (b.totalCommits || 0) - (a.totalCommits || 0));
+    const visible = sorted.slice(0, 10);
+    const hidden = sorted.slice(10);
+    let html = `<div class="insights-table-wrap">
+        <table class="insights-table">
+            <thead><tr>
+                <th scope="col">Developer</th>
+                <th scope="col" class="num">Commits</th>
+                <th scope="col">Primary Tech</th>
+                <th scope="col">Technologies</th>
+            </tr></thead>
+            <tbody>`;
+    for (const d of visible) {
+        const techList = (d.technologies || []).slice(0, 3).map(t => escapeHtml(t.tech || '')).join(', ');
+        html += `<tr>
+            <td>${escapeHtml(d.name || '')}</td>
+            <td class="num">${formatInt(d.totalCommits || 0)}</td>
+            <td>${escapeHtml(d.primaryTech || 'N/A')}</td>
+            <td class="filepath">${techList || 'N/A'}</td>
+        </tr>`;
+    }
+    for (const d of hidden) {
+        const techList = (d.technologies || []).slice(0, 3).map(t => escapeHtml(t.tech || '')).join(', ');
+        html += `<tr class="insights-hidden-row">
+            <td>${escapeHtml(d.name || '')}</td>
+            <td class="num">${formatInt(d.totalCommits || 0)}</td>
+            <td>${escapeHtml(d.primaryTech || 'N/A')}</td>
+            <td class="filepath">${techList || 'N/A'}</td>
+        </tr>`;
+    }
+    html += '</tbody></table></div>';
+    if (hidden.length > 0) {
+        html += `<button type="button" class="insights-show-all">Show all (${developers.length})</button>`;
     }
     return html;
 }

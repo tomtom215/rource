@@ -30,12 +30,16 @@
 //! All computation happens at load time (not per-frame), so there is zero impact
 //! on the visualization's frame budget.
 
+pub mod activity_heatmap;
 pub mod cadence;
 pub mod change_bursts;
 pub mod change_entropy;
+pub mod churn_volatility;
 pub mod circadian;
+pub mod commit_complexity;
 pub mod congruence;
 pub mod coupling;
+pub mod defect_patterns;
 pub mod defect_prediction;
 pub mod developer_experience;
 pub mod focus;
@@ -53,7 +57,11 @@ pub mod ownership_fragmentation;
 pub mod profiles;
 pub mod release_rhythm;
 pub mod survival;
+pub mod tech_distribution;
+pub mod tech_expertise;
 pub mod temporal;
+pub mod truck_factor;
+pub mod turnover_impact;
 pub mod work_type;
 
 use rustc_hash::FxHashMap;
@@ -179,6 +187,30 @@ pub struct InsightsReport {
     /// Composite defect prediction scores (D'Ambros et al. 2010).
     pub defect_prediction: defect_prediction::DefectPredictionReport,
 
+    /// Code churn volatility per file (Nagappan & Ball 2005).
+    pub churn_volatility: churn_volatility::ChurnVolatilityReport,
+
+    /// Enhanced truck factor via DOA model (Avelino et al. 2016).
+    pub truck_factor: truck_factor::TruckFactorReport,
+
+    /// Developer turnover impact analysis (Mockus 2009).
+    pub turnover_impact: turnover_impact::TurnoverImpactReport,
+
+    /// Per-commit complexity / tangled change scores (Herzig & Zeller 2013).
+    pub commit_complexity: commit_complexity::CommitComplexityReport,
+
+    /// Defect-introducing change patterns (Kim et al. 2008).
+    pub defect_patterns: defect_patterns::DefectPatternsReport,
+
+    /// Language/technology distribution by file extension (Mockus et al. 2002).
+    pub tech_distribution: tech_distribution::TechDistributionReport,
+
+    /// Commit activity heatmap — day-of-week × hour grid (Eyolfson et al. 2011).
+    pub activity_heatmap: activity_heatmap::ActivityHeatmapReport,
+
+    /// Developer technology expertise profiles (Mockus & Herbsleb 2002).
+    pub tech_expertise: tech_expertise::TechExpertiseReport,
+
     /// Summary statistics.
     pub summary: SummaryStats,
 }
@@ -290,6 +322,22 @@ pub fn compute_insights(commits: &[CommitRecord]) -> InsightsReport {
         medium_risk_count: 0,
     };
 
+    // Session 5 metrics: additional academic research metrics
+    let churn_volatility = accumulators.churn_volatility_acc.finalize();
+    let first_authors = accumulators.truck_factor_acc.into_first_authors();
+    let truck_factor_report =
+        truck_factor::compute_truck_factor(&accumulators.file_authors, &first_authors);
+    let turnover_impact = accumulators
+        .turnover_impact_acc
+        .finalize(&accumulators.file_authors, t_max);
+    let commit_complexity = accumulators.commit_complexity_acc.finalize();
+    let defect_patterns = accumulators.defect_patterns_acc.finalize();
+
+    // Session 5b metrics: repository overview
+    let tech_distribution = accumulators.tech_distribution_acc.finalize();
+    let activity_heatmap = accumulators.activity_heatmap_acc.finalize();
+    let tech_expertise = accumulators.tech_expertise_acc.finalize();
+
     let summary = compute_summary(
         commits,
         &ownership,
@@ -327,6 +375,14 @@ pub fn compute_insights(commits: &[CommitRecord]) -> InsightsReport {
         release_rhythm,
         knowledge_distribution,
         defect_prediction,
+        churn_volatility,
+        truck_factor: truck_factor_report,
+        turnover_impact,
+        commit_complexity,
+        defect_patterns,
+        tech_distribution,
+        activity_heatmap,
+        tech_expertise,
         summary,
     }
 }
@@ -486,6 +542,62 @@ fn empty_report() -> InsightsReport {
             high_risk_count: 0,
             medium_risk_count: 0,
         },
+        churn_volatility: churn_volatility::ChurnVolatilityReport {
+            files: Vec::new(),
+            avg_cv: 0.0,
+            volatile_count: 0,
+            stable_count: 0,
+        },
+        truck_factor: truck_factor::TruckFactorReport {
+            truck_factor: 0,
+            ranked_developers: Vec::new(),
+            total_files: 0,
+            top_dev_orphan_count: 0,
+            single_expert_pct: 0.0,
+        },
+        turnover_impact: turnover_impact::TurnoverImpactReport {
+            departed_developers: Vec::new(),
+            active_count: 0,
+            departed_count: 0,
+            orphan_rate: 0.0,
+            total_orphaned_files: 0,
+        },
+        commit_complexity: commit_complexity::CommitComplexityReport {
+            commits: Vec::new(),
+            avg_complexity: 0.0,
+            median_complexity: 0.0,
+            p95_complexity: 0.0,
+            tangled_count: 0,
+            max_complexity: 0.0,
+        },
+        defect_patterns: defect_patterns::DefectPatternsReport {
+            files: Vec::new(),
+            large_commit_count: 0,
+            burst_after_large_count: 0,
+            avg_score: 0.0,
+            high_risk_count: 0,
+        },
+        tech_distribution: tech_distribution::TechDistributionReport {
+            languages: Vec::new(),
+            total_files: 0,
+            language_count: 0,
+            primary_language: String::new(),
+            primary_language_pct: 0.0,
+        },
+        activity_heatmap: activity_heatmap::ActivityHeatmapReport {
+            grid: [[0; 24]; 7],
+            total_commits: 0,
+            peak_day: 0,
+            peak_hour: 0,
+            peak_count: 0,
+            work_hours_pct: 0.0,
+            weekend_pct: 0.0,
+        },
+        tech_expertise: tech_expertise::TechExpertiseReport {
+            developers: Vec::new(),
+            developer_count: 0,
+            dominant_tech: String::new(),
+        },
         summary: SummaryStats {
             total_commits: 0,
             total_files: 0,
@@ -520,9 +632,18 @@ struct CommitAccumulators {
     developer_experience_acc: developer_experience::DeveloperExperienceAccumulator,
     release_rhythm_acc: release_rhythm::ReleaseRhythmAccumulator,
     knowledge_distribution_acc: knowledge_distribution::KnowledgeDistributionAccumulator,
+    churn_volatility_acc: churn_volatility::ChurnVolatilityAccumulator,
+    truck_factor_acc: truck_factor::TruckFactorAccumulator,
+    turnover_impact_acc: turnover_impact::TurnoverImpactAccumulator,
+    commit_complexity_acc: commit_complexity::CommitComplexityAccumulator,
+    defect_patterns_acc: defect_patterns::DefectPatternsAccumulator,
+    tech_distribution_acc: tech_distribution::TechDistributionAccumulator,
+    activity_heatmap_acc: activity_heatmap::ActivityHeatmapAccumulator,
+    tech_expertise_acc: tech_expertise::TechExpertiseAccumulator,
 }
 
 /// Single pass over commits to populate all accumulators.
+#[allow(clippy::too_many_lines)]
 fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
     let mut file_changes: FxHashMap<String, hotspot::HotspotAccumulator> = FxHashMap::default();
     let mut file_authors: FxHashMap<String, FxHashMap<String, u32>> = FxHashMap::default();
@@ -545,6 +666,14 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
     let mut release_rhythm_acc = release_rhythm::ReleaseRhythmAccumulator::new();
     let mut knowledge_distribution_acc =
         knowledge_distribution::KnowledgeDistributionAccumulator::new();
+    let mut churn_volatility_acc = churn_volatility::ChurnVolatilityAccumulator::new();
+    let mut truck_factor_acc = truck_factor::TruckFactorAccumulator::new();
+    let mut turnover_impact_acc = turnover_impact::TurnoverImpactAccumulator::new();
+    let mut commit_complexity_acc = commit_complexity::CommitComplexityAccumulator::new();
+    let mut defect_patterns_acc = defect_patterns::DefectPatternsAccumulator::new();
+    let mut tech_distribution_acc = tech_distribution::TechDistributionAccumulator::new();
+    let mut activity_heatmap_acc = activity_heatmap::ActivityHeatmapAccumulator::new();
+    let mut tech_expertise_acc = tech_expertise::TechExpertiseAccumulator::new();
 
     for commit in commits {
         *unique_authors.entry(commit.author.clone()).or_insert(0) += 1;
@@ -569,6 +698,36 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
         release_rhythm_acc.record_commit(commit.timestamp);
         knowledge_distribution_acc.record_commit(&commit.author, &file_paths);
 
+        // Session 5 accumulators: additional academic metrics
+        turnover_impact_acc.record_commit(&commit.author, commit.timestamp);
+        {
+            let files_with_actions: Vec<(&str, FileActionKind)> = commit
+                .files
+                .iter()
+                .map(|f| (f.path.as_str(), f.action))
+                .collect();
+            commit_complexity_acc.record_commit(
+                &commit.author,
+                commit.timestamp,
+                &files_with_actions,
+            );
+        }
+        defect_patterns_acc.record_commit(&commit.author, commit.timestamp, &file_paths);
+
+        // Session 5b accumulators: repository overview metrics
+        activity_heatmap_acc.record_commit(commit.timestamp);
+        {
+            // Collect unique techs for this commit for tech expertise
+            let mut commit_techs: rustc_hash::FxHashSet<&str> = rustc_hash::FxHashSet::default();
+            for f in &commit.files {
+                let ext = f.path.rsplit_once('.').map_or("", |(_, e)| e);
+                let tech = tech_distribution::classify_ext(ext);
+                commit_techs.insert(tech);
+            }
+            let tech_list: Vec<&str> = commit_techs.into_iter().collect();
+            tech_expertise_acc.record_commit(&commit.author, &tech_list);
+        }
+
         for file in &commit.files {
             file_changes
                 .entry(file.path.clone())
@@ -585,6 +744,11 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
             // Session 3 accumulators: per-file data
             change_entropy_acc.record_file(&file.path, file.action, commit.timestamp);
             change_burst_acc.record_file(&file.path, commit.timestamp, &commit.author);
+
+            // Session 5 accumulators: per-file data
+            churn_volatility_acc.record_file(&file.path, file.action, commit.timestamp);
+            truck_factor_acc.record_file(&file.path, file.action, &commit.author);
+            tech_distribution_acc.record_file(&file.path, file.action);
             match file.action {
                 FileActionKind::Create => survival_acc.record_create(&file.path, commit.timestamp),
                 FileActionKind::Delete => survival_acc.record_delete(&file.path, commit.timestamp),
@@ -621,6 +785,14 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
         developer_experience_acc,
         release_rhythm_acc,
         knowledge_distribution_acc,
+        churn_volatility_acc,
+        truck_factor_acc,
+        turnover_impact_acc,
+        commit_complexity_acc,
+        defect_patterns_acc,
+        tech_distribution_acc,
+        activity_heatmap_acc,
+        tech_expertise_acc,
     }
 }
 

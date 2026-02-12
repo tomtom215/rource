@@ -131,6 +131,16 @@ pub struct FileMetrics {
     /// Composite defect prediction score (D'Ambros et al. 2010).
     /// Range: 0.0–1.0 (higher = more defect-prone).
     pub defect_score: f64,
+
+    /// Code churn volatility CV (Nagappan & Ball 2005).
+    /// Coefficient of variation of change frequency across time windows.
+    /// Higher = more erratic churn pattern = more defect-prone.
+    pub churn_cv: f64,
+
+    /// Defect-introducing change pattern score (Kim et al. 2008).
+    /// Proportion of large-commit appearances followed by fix-up bursts.
+    /// Range: 0.0–1.0 (higher = more defect-introducing pattern).
+    pub defect_pattern_score: f64,
 }
 
 /// Compact lifecycle stage enum for the index.
@@ -171,6 +181,8 @@ impl Default for FileMetrics {
             coupling_degree: 0,
             ownership_gini: 0.0,
             defect_score: 0.0,
+            churn_cv: 0.0,
+            defect_pattern_score: 0.0,
         }
     }
 }
@@ -234,6 +246,16 @@ pub struct UserMetrics {
 
     /// Tenure in days (last commit - first commit).
     pub tenure_days: f64,
+
+    /// Total DOA (Degree of Authorship) from truck factor model (Avelino et al. 2016).
+    /// Sum of DOA scores across all files where this developer is an expert.
+    pub truck_factor_doa: f64,
+
+    /// Number of files where this developer is the sole expert.
+    pub sole_expert_count: u32,
+
+    /// Whether this developer has departed (no commits in last 90 days).
+    pub is_departed: bool,
 }
 
 /// Compact contributor classification.
@@ -279,6 +301,9 @@ impl Default for UserMetrics {
             directories_touched: 0,
             experience_score: 0.0,
             tenure_days: 0.0,
+            truck_factor_doa: 0.0,
+            sole_expert_count: 0,
+            is_departed: false,
         }
     }
 }
@@ -432,6 +457,18 @@ impl InsightsIndex {
             fm.ownership_gini = of.gini_coefficient;
         }
 
+        // Churn volatility (Nagappan & Ball 2005)
+        for cv in &report.churn_volatility.files {
+            let fm = files.entry(cv.path.clone()).or_default();
+            fm.churn_cv = cv.cv;
+        }
+
+        // Defect-introducing change patterns (Kim et al. 2008)
+        for dp in &report.defect_patterns.files {
+            let fm = files.entry(dp.path.clone()).or_default();
+            fm.defect_pattern_score = dp.score;
+        }
+
         // Defect prediction scores (D'Ambros et al. 2010)
         // Compute from the file metrics we've accumulated so far
         {
@@ -499,6 +536,19 @@ impl InsightsIndex {
             let um = users.entry(de.author.clone()).or_default();
             um.experience_score = de.experience_score;
             um.tenure_days = de.tenure_days;
+        }
+
+        // Truck factor DOA (Avelino et al. 2016)
+        for dev in &report.truck_factor.ranked_developers {
+            let um = users.entry(dev.name.clone()).or_default();
+            um.truck_factor_doa = dev.total_doa;
+            um.sole_expert_count = dev.sole_expert_count;
+        }
+
+        // Turnover impact (Mockus 2009)
+        for dep in &report.turnover_impact.departed_developers {
+            let um = users.entry(dep.name.clone()).or_default();
+            um.is_departed = true;
         }
 
         // ---- Phase 3: Compute summary statistics ----

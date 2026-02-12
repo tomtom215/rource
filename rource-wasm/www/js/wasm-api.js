@@ -291,7 +291,7 @@ export function getCommitDirectoryCount() {
 // ============================================================
 // Repository Insights API
 //
-// Wrappers for the 25 insights analysis methods.
+// Wrappers for the 28 insights analysis methods.
 // All methods return parsed JSON objects (or null/[] on failure).
 // Insights are computed from commit history, not per-frame data.
 // ============================================================
@@ -643,6 +643,118 @@ export function getKnowledgeDistribution() {
     if (rource) {
         const json = safeWasmCall('getKnowledgeDistribution', () => rource.getKnowledgeDistribution(), null);
         return parseInsightsJson('getKnowledgeDistribution', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns code churn volatility per file (Nagappan & Ball 2005).
+ * Coefficient of variation of weighted churn across time windows.
+ * @returns {Object|null} Churn volatility data with per-file CV scores
+ */
+export function getChurnVolatility() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getChurnVolatility', () => rource.getChurnVolatility(), null);
+        return parseInsightsJson('getChurnVolatility', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns enhanced truck factor via DOA model (Avelino et al. 2016).
+ * Minimum developers whose departure orphans >50% of files.
+ * @returns {Object|null} Truck factor data with developer criticality rankings
+ */
+export function getTruckFactor() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getTruckFactor', () => rource.getTruckFactor(), null);
+        return parseInsightsJson('getTruckFactor', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns developer turnover impact analysis (Mockus 2009).
+ * Identifies departed developers and orphaned files.
+ * @returns {Object|null} Turnover impact data with departed developers and orphan rates
+ */
+export function getTurnoverImpact() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getTurnoverImpact', () => rource.getTurnoverImpact(), null);
+        return parseInsightsJson('getTurnoverImpact', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns per-commit complexity scores (Herzig & Zeller 2013).
+ * Shannon entropy of action types × file count × directory count.
+ * @returns {Object|null} Commit complexity data with tangled commit detection
+ */
+export function getCommitComplexity() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getCommitComplexity', () => rource.getCommitComplexity(), null);
+        return parseInsightsJson('getCommitComplexity', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns defect-introducing change patterns (Kim et al. 2008).
+ * Burst edits following large commits as proxy for defect introduction.
+ * @returns {Object|null} Defect pattern data with per-file risk scores
+ */
+export function getDefectPatterns() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getDefectPatterns', () => rource.getDefectPatterns(), null);
+        return parseInsightsJson('getDefectPatterns', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns language/technology distribution by file extension (Mockus et al. 2002).
+ * Classifies repository files by programming language based on file extensions.
+ * @returns {Object|null} Tech distribution data with per-language file counts
+ */
+export function getTechDistribution() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getTechDistribution', () => rource.getTechDistribution(), null);
+        return parseInsightsJson('getTechDistribution', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns commit activity heatmap — day-of-week x hour-of-day (Eyolfson et al. 2011).
+ * 7x24 grid showing when development activity occurs.
+ * @returns {Object|null} Activity heatmap data with grid and peak metrics
+ */
+export function getActivityHeatmap() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getActivityHeatmap', () => rource.getActivityHeatmap(), null);
+        return parseInsightsJson('getActivityHeatmap', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns developer technology expertise profiles (Mockus & Herbsleb 2002).
+ * Maps each developer to technologies they work with based on file extensions.
+ * @returns {Object|null} Tech expertise data with per-developer technology profiles
+ */
+export function getTechExpertise() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getTechExpertise', () => rource.getTechExpertise(), null);
+        return parseInsightsJson('getTechExpertise', json, null);
     }
     return null;
 }

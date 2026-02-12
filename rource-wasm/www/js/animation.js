@@ -33,6 +33,9 @@ export {
     debouncedResize,
     // Callbacks
     setUIUpdateCallback,
+    // Idle mode (Level 2 power management)
+    wakeFromIdle,
+    isIdleMode,
     // Initialization
     initAnimation,
 } from './core/animation-loop.js';

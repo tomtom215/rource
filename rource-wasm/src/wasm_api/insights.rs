@@ -114,6 +114,14 @@ fn format_insights_json(report: &InsightsReport) -> String {
     write_ownership_fragmentation_json(&mut json, report);
     write_release_rhythm_json(&mut json, report);
     write_knowledge_distribution_json(&mut json, report);
+    write_churn_volatility_json(&mut json, report);
+    write_truck_factor_json(&mut json, report);
+    write_turnover_impact_json(&mut json, report);
+    write_commit_complexity_json(&mut json, report);
+    write_defect_patterns_json(&mut json, report);
+    write_tech_distribution_json(&mut json, report);
+    write_activity_heatmap_json(&mut json, report);
+    write_tech_expertise_json(&mut json, report);
     json.push('}');
     json
 }
@@ -1338,6 +1346,126 @@ impl Rource {
         json.push('}');
         Some(json)
     }
+
+    /// Returns code churn volatility per file (Nagappan & Ball 2005).
+    #[wasm_bindgen(js_name = getChurnVolatility)]
+    pub fn get_churn_volatility(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let mut json = String::with_capacity(1024);
+        json.push('{');
+        write_churn_volatility_json_standalone(&mut json, &report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns enhanced truck factor via DOA model (Avelino et al. 2016).
+    #[wasm_bindgen(js_name = getTruckFactor)]
+    pub fn get_truck_factor(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let mut json = String::with_capacity(1024);
+        json.push('{');
+        write_truck_factor_json_standalone(&mut json, &report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns developer turnover impact analysis (Mockus 2009).
+    #[wasm_bindgen(js_name = getTurnoverImpact)]
+    pub fn get_turnover_impact(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let mut json = String::with_capacity(1024);
+        json.push('{');
+        write_turnover_impact_json_standalone(&mut json, &report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns per-commit complexity / tangled change scores (Herzig & Zeller 2013).
+    #[wasm_bindgen(js_name = getCommitComplexity)]
+    pub fn get_commit_complexity(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let mut json = String::with_capacity(2048);
+        json.push('{');
+        write_commit_complexity_json_standalone(&mut json, &report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns defect-introducing change patterns (Kim et al. 2008).
+    #[wasm_bindgen(js_name = getDefectPatterns)]
+    pub fn get_defect_patterns(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let mut json = String::with_capacity(1024);
+        json.push('{');
+        write_defect_patterns_json_standalone(&mut json, &report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns language/technology distribution by file extension.
+    #[wasm_bindgen(js_name = getTechDistribution)]
+    pub fn get_tech_distribution(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let mut json = String::with_capacity(2048);
+        json.push('{');
+        write_tech_distribution_json_standalone(&mut json, &report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns commit activity heatmap (day-of-week × hour-of-day grid).
+    #[wasm_bindgen(js_name = getActivityHeatmap)]
+    pub fn get_activity_heatmap(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let mut json = String::with_capacity(4096);
+        json.push('{');
+        write_activity_heatmap_json_standalone(&mut json, &report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns developer technology expertise profiles.
+    #[wasm_bindgen(js_name = getTechExpertise)]
+    pub fn get_tech_expertise(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let mut json = String::with_capacity(2048);
+        json.push('{');
+        write_tech_expertise_json_standalone(&mut json, &report);
+        json.push('}');
+        Some(json)
+    }
 }
 
 // ============================================================================
@@ -1482,7 +1610,7 @@ fn format_file_metrics_json(fm: &rource_core::insights::index::FileMetrics) -> S
     let mut json = String::with_capacity(512);
     let _ = write!(
         json,
-        r#"{{"hotspotScore":{:.4},"hotspotRank":{},"totalChanges":{},"contributorCount":{},"topOwnerShare":{:.4},"topOwner":"{}","lifecycleStage":"{}","ageDays":{:.1},"burstCount":{},"burstRiskScore":{:.4},"circadianRisk":{:.4},"knowledgeEntropy":{:.4},"isKnowledgeSilo":{},"diffusionScore":{:.4},"couplingDegree":{},"ownershipGini":{:.4},"defectScore":{:.4}}}"#,
+        r#"{{"hotspotScore":{:.4},"hotspotRank":{},"totalChanges":{},"contributorCount":{},"topOwnerShare":{:.4},"topOwner":"{}","lifecycleStage":"{}","ageDays":{:.1},"burstCount":{},"burstRiskScore":{:.4},"circadianRisk":{:.4},"knowledgeEntropy":{:.4},"isKnowledgeSilo":{},"diffusionScore":{:.4},"couplingDegree":{},"ownershipGini":{:.4},"defectScore":{:.4},"churnCv":{:.4},"defectPatternScore":{:.4}}}"#,
         fm.hotspot_score,
         fm.hotspot_rank
             .map_or_else(|| "null".to_string(), |r| r.to_string()),
@@ -1501,6 +1629,8 @@ fn format_file_metrics_json(fm: &rource_core::insights::index::FileMetrics) -> S
         fm.coupling_degree,
         fm.ownership_gini,
         fm.defect_score,
+        fm.churn_cv,
+        fm.defect_pattern_score,
     );
     json
 }
@@ -1510,7 +1640,7 @@ fn format_user_metrics_json(um: &rource_core::insights::index::UserMetrics) -> S
     let mut json = String::with_capacity(384);
     let _ = write!(
         json,
-        r#"{{"commitCount":{},"profileType":"{}","uniqueFiles":{},"avgFilesPerCommit":{:.2},"activeSpanDays":{:.1},"cadenceType":"{}","meanCommitInterval":{:.1},"focusScore":{:.4},"networkDegree":{},"networkBetweenness":{:.4},"circadianAvgRisk":{:.4},"directoriesTouched":{},"experienceScore":{:.4},"tenureDays":{:.1}}}"#,
+        r#"{{"commitCount":{},"profileType":"{}","uniqueFiles":{},"avgFilesPerCommit":{:.2},"activeSpanDays":{:.1},"cadenceType":"{}","meanCommitInterval":{:.1},"focusScore":{:.4},"networkDegree":{},"networkBetweenness":{:.4},"circadianAvgRisk":{:.4},"directoriesTouched":{},"experienceScore":{:.4},"tenureDays":{:.1},"truckFactorDoa":{:.4},"soleExpertCount":{},"isDeparted":{}}}"#,
         um.commit_count,
         um.profile_type,
         um.unique_files,
@@ -1525,6 +1655,9 @@ fn format_user_metrics_json(um: &rource_core::insights::index::UserMetrics) -> S
         um.directories_touched,
         um.experience_score,
         um.tenure_days,
+        um.truck_factor_doa,
+        um.sole_expert_count,
+        um.is_departed,
     );
     json
 }
@@ -1774,6 +1907,306 @@ fn write_release_rhythm_json_standalone(json: &mut String, report: &InsightsRepo
 fn write_knowledge_distribution_json_standalone(json: &mut String, report: &InsightsReport) {
     let mut buf = String::new();
     write_knowledge_distribution_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+// ============================================================================
+// Session 5: New Academic Metrics JSON Writers
+// ============================================================================
+
+/// Appends code churn volatility section to the JSON output.
+fn write_churn_volatility_json(json: &mut String, report: &InsightsReport) {
+    let cv = &report.churn_volatility;
+    let _ = write!(
+        json,
+        r#","churnVolatility":{{"avgCv":{:.4},"volatileCount":{},"stableCount":{},"files":["#,
+        cv.avg_cv, cv.volatile_count, cv.stable_count,
+    );
+    for (i, f) in cv.files.iter().take(100).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"path":"{}","cv":{:.4},"totalChurn":{:.2},"activeWindows":{},"volatilityClass":"{}"}}"#,
+            escape_json(&f.path),
+            f.cv,
+            f.total_churn,
+            f.active_windows,
+            f.volatility_class,
+        );
+    }
+    json.push_str("]}");
+}
+
+/// Appends enhanced truck factor section to the JSON output.
+fn write_truck_factor_json(json: &mut String, report: &InsightsReport) {
+    let tf = &report.truck_factor;
+    let _ = write!(
+        json,
+        r#","truckFactor":{{"truckFactor":{},"totalFiles":{},"topDevOrphanCount":{},"singleExpertPct":{:.4},"rankedDevelopers":["#,
+        tf.truck_factor, tf.total_files, tf.top_dev_orphan_count, tf.single_expert_pct,
+    );
+    for (i, d) in tf.ranked_developers.iter().enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"name":"{}","totalDoa":{:.4},"expertFileCount":{},"soleExpertCount":{}}}"#,
+            escape_json(&d.name),
+            d.total_doa,
+            d.expert_file_count,
+            d.sole_expert_count,
+        );
+    }
+    json.push_str("]}");
+}
+
+/// Appends developer turnover impact section to the JSON output.
+fn write_turnover_impact_json(json: &mut String, report: &InsightsReport) {
+    let ti = &report.turnover_impact;
+    let _ = write!(
+        json,
+        r#","turnoverImpact":{{"activeCount":{},"departedCount":{},"orphanRate":{:.4},"totalOrphanedFiles":{},"departedDevelopers":["#,
+        ti.active_count, ti.departed_count, ti.orphan_rate, ti.total_orphaned_files,
+    );
+    for (i, d) in ti.departed_developers.iter().enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"name":"{}","lastCommitTs":{},"daysSinceLast":{},"ownedFiles":{},"orphanedFiles":{},"impactScore":{:.4}}}"#,
+            escape_json(&d.name),
+            d.last_commit_ts,
+            d.days_since_last,
+            d.owned_files,
+            d.orphaned_files,
+            d.impact_score,
+        );
+    }
+    json.push_str("]}");
+}
+
+/// Appends commit complexity section to the JSON output.
+fn write_commit_complexity_json(json: &mut String, report: &InsightsReport) {
+    let cc = &report.commit_complexity;
+    let _ = write!(
+        json,
+        r#","commitComplexity":{{"avgComplexity":{:.4},"medianComplexity":{:.4},"p95Complexity":{:.4},"tangledCount":{},"maxComplexity":{:.4},"commits":["#,
+        cc.avg_complexity,
+        cc.median_complexity,
+        cc.p95_complexity,
+        cc.tangled_count,
+        cc.max_complexity,
+    );
+    // Top 100 most complex commits
+    for (i, c) in cc.commits.iter().take(100).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"commitIdx":{},"author":"{}","timestamp":{},"fileCount":{},"dirCount":{},"actionEntropy":{:.4},"complexityScore":{:.4},"isTangled":{}}}"#,
+            c.commit_idx,
+            escape_json(&c.author),
+            c.timestamp,
+            c.file_count,
+            c.dir_count,
+            c.action_entropy,
+            c.complexity_score,
+            c.is_tangled,
+        );
+    }
+    json.push_str("]}");
+}
+
+/// Appends defect-introducing change patterns section to the JSON output.
+fn write_defect_patterns_json(json: &mut String, report: &InsightsReport) {
+    let dp = &report.defect_patterns;
+    let _ = write!(
+        json,
+        r#","defectPatterns":{{"largeCommitCount":{},"burstAfterLargeCount":{},"avgScore":{:.4},"highRiskCount":{},"files":["#,
+        dp.large_commit_count, dp.burst_after_large_count, dp.avg_score, dp.high_risk_count,
+    );
+    for (i, f) in dp.files.iter().take(100).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"path":"{}","burstAfterLarge":{},"largeCommitAppearances":{},"score":{:.4},"totalEdits":{}}}"#,
+            escape_json(&f.path),
+            f.burst_after_large,
+            f.large_commit_appearances,
+            f.score,
+            f.total_edits,
+        );
+    }
+    json.push_str("]}");
+}
+
+/// Standalone writer for churn volatility endpoint.
+fn write_churn_volatility_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_churn_volatility_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone writer for truck factor endpoint.
+fn write_truck_factor_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_truck_factor_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone writer for turnover impact endpoint.
+fn write_turnover_impact_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_turnover_impact_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone writer for commit complexity endpoint.
+fn write_commit_complexity_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_commit_complexity_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone writer for defect patterns endpoint.
+fn write_defect_patterns_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_defect_patterns_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+// ============================================================================
+// Session 6: Language Distribution, Activity Heatmap, Tech Expertise
+// ============================================================================
+
+/// Appends language/technology distribution section to the JSON output.
+fn write_tech_distribution_json(json: &mut String, report: &InsightsReport) {
+    let td = &report.tech_distribution;
+    let _ = write!(
+        json,
+        r#","techDistribution":{{"totalFiles":{},"languageCount":{},"primaryLanguage":"{}","primaryLanguagePct":{:.2},"languages":["#,
+        td.total_files,
+        td.language_count,
+        escape_json(&td.primary_language),
+        td.primary_language_pct,
+    );
+    for (i, lang) in td.languages.iter().enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"name":"{}","fileCount":{},"percentage":{:.2},"extensions":["#,
+            escape_json(&lang.name),
+            lang.file_count,
+            lang.percentage,
+        );
+        for (j, ext) in lang.extensions.iter().enumerate() {
+            if j > 0 {
+                json.push(',');
+            }
+            let _ = write!(json, r#""{}""#, escape_json(ext));
+        }
+        json.push_str("]}");
+    }
+    json.push_str("]}");
+}
+
+/// Appends commit activity heatmap section to the JSON output.
+fn write_activity_heatmap_json(json: &mut String, report: &InsightsReport) {
+    use rource_core::insights::activity_heatmap::day_name;
+
+    let hm = &report.activity_heatmap;
+    let _ = write!(
+        json,
+        r#","activityHeatmap":{{"totalCommits":{},"peakDay":{},"peakDayName":"{}","peakHour":{},"peakCount":{},"workHoursPct":{:.2},"weekendPct":{:.2},"grid":["#,
+        hm.total_commits,
+        hm.peak_day,
+        day_name(hm.peak_day),
+        hm.peak_hour,
+        hm.peak_count,
+        hm.work_hours_pct,
+        hm.weekend_pct,
+    );
+    for (d, day_row) in hm.grid.iter().enumerate() {
+        if d > 0 {
+            json.push(',');
+        }
+        json.push('[');
+        for (h, &count) in day_row.iter().enumerate() {
+            if h > 0 {
+                json.push(',');
+            }
+            let _ = write!(json, "{count}");
+        }
+        json.push(']');
+    }
+    json.push_str("]}");
+}
+
+/// Appends developer technology expertise section to the JSON output.
+fn write_tech_expertise_json(json: &mut String, report: &InsightsReport) {
+    let te = &report.tech_expertise;
+    let _ = write!(
+        json,
+        r#","techExpertise":{{"developerCount":{},"dominantTech":"{}","developers":["#,
+        te.developer_count,
+        escape_json(&te.dominant_tech),
+    );
+    for (i, dev) in te.developers.iter().enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"name":"{}","totalCommits":{},"techCount":{},"primaryTech":"{}","technologies":["#,
+            escape_json(&dev.name),
+            dev.total_commits,
+            dev.tech_count,
+            escape_json(&dev.primary_tech),
+        );
+        for (j, tech) in dev.technologies.iter().enumerate() {
+            if j > 0 {
+                json.push(',');
+            }
+            let _ = write!(
+                json,
+                r#"{{"tech":"{}","commits":{},"percentage":{:.2}}}"#,
+                escape_json(&tech.tech),
+                tech.commits,
+                tech.percentage,
+            );
+        }
+        json.push_str("]}");
+    }
+    json.push_str("]}");
+}
+
+/// Standalone writer for tech distribution endpoint.
+fn write_tech_distribution_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_tech_distribution_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone writer for activity heatmap endpoint.
+fn write_activity_heatmap_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_activity_heatmap_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone writer for tech expertise endpoint.
+fn write_tech_expertise_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_tech_expertise_json(&mut buf, report);
     json.push_str(buf.trim_start_matches(','));
 }
 
