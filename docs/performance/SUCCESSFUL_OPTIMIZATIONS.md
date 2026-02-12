@@ -1556,6 +1556,35 @@ no simulation step occurs), eliminating visible flicker.
 - At 2K FPS: steps every ~4 frames — smooth, no jitter
 - At 8K FPS: steps every ~17 frames — smooth, no jitter
 
+### Phase 87: Zero-Allocation Branch Drawing + LOD
+
+**Phase**: 87
+**Location**: `crates/rource-render/src/visual.rs`, `rource-wasm/src/render_phases/files.rs`,
+`rource-wasm/src/render_phases/directories.rs`, `rource-cli/src/rendering.rs`
+**Impact**: Full frame: 18.98 µs → 4.23 µs (**-77.7%, 4.48x speedup**)
+
+**Problem**: `draw_curved_branch()` allocated a new `Vec<Vec2>` (~31 points, 248 bytes)
+for every branch drawn — 200+ times per frame. Additionally, each branch drew two
+`draw_spline` calls (main + 0.15-alpha glow), and short branches received full
+Catmull-Rom computation despite being visually identical to straight lines.
+
+**Solution**: Created `draw_curved_branch_buffered()` with three optimizations:
+
+1. **Caller-owned buffer**: Single `Vec<Vec2>` reused across all branch draws,
+   eliminating ~220 heap allocations per frame (~54.6 KB/frame saved)
+2. **LOD distance threshold**: Branches < ~50px on screen use `draw_line` instead
+   of Catmull-Rom splines (squared distance check avoids `sqrt`)
+3. **No glow pass**: Removed imperceptible 0.15-alpha glow, halving `draw_spline` calls
+
+Both CLI and WASM builds updated for parity — same `draw_curved_branch_buffered`
+function, same reusable buffer pattern.
+
+| Component | Before | After | Speedup |
+|-----------|--------|-------|---------|
+| `render_files` | 18,108 ns | 2,127 ns | 8.51x |
+| `render_directories` | 1,503 ns | 168 ns | 8.95x |
+| **Full frame** | **18,975 ns** | **4,231 ns** | **4.48x** |
+
 ---
 
 *Last updated: 2026-02-12*

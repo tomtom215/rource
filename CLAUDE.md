@@ -386,6 +386,11 @@ The following events MUST trigger a CLAUDE.md update:
 | Triple-nested `Vec<Vec<Vec<T>>>` in hot path | Flatten to `Vec<Vec<T>>` with arithmetic indexing; each pointer level costs ~5-20 ns per access |
 | Generation counter branch in tight inner loop | Replace with dirty-cell tracking: container-level invalidation, branch-free inner loop |
 | Flickering at extreme FPS (>2K) from timer resolution aliasing | Use simulation time accumulator with minimum step threshold (1/480 Hz = 2.08ms) |
+| Per-call `Vec` allocation in hot render loop | Use caller-owned reusable buffer pattern: single `Vec` in parent struct, `&mut` passed down. Eliminates N allocs/frame where N = visible entities |
+| Catmull-Rom spline on short branches (< ~50px) | Add LOD distance threshold: squared distance check (avoids `sqrt`), fall back to `draw_line` for short branches |
+| Duplicate glow pass with imperceptible alpha (0.15) | Remove second `draw_spline` call; 0.15 alpha on thin (0.8px) lines is sub-pixel. Halves draw calls for branches |
+| Optimizing WASM but not CLI creates tech debt/drift | ALWAYS update both CLI and WASM together. Same buffer pattern, same function (`draw_curved_branch_buffered`). Prevents code divergence |
+| Full-frame profiling reveals unexpected bottleneck distribution | Build NoOpRenderer (zero GPU cost) benchmark covering ALL render phases. Profile before optimizing; the bottleneck is rarely where you expect |
 
 #### Lessons Learned Log
 
@@ -470,8 +475,8 @@ On a 3.0 GHz CPU (typical test hardware):
 
 | Metric | Current | Target | Status |
 |--------|---------|--------|--------|
-| Frame time | ~2.5 µs (label placement) | <5 µs | Approaching target |
-| Optimization phases | 86 | Ongoing | Active |
+| Frame time | ~4.23 µs (full frame, 200 files) | <5 µs | **WITHIN TARGET** |
+| Optimization phases | 87 | Ongoing | Active |
 | Algorithms evaluated | 79+ | Comprehensive | See ALGORITHM_CANDIDATES.md |
 
 ---
@@ -491,7 +496,7 @@ On a 3.0 GHz CPU (typical test hardware):
 | Precision | Picosecond/nanosecond measurements |
 | Frame Budget | Total render time < 5 µs (target: 2-5 µs) |
 
-**Reference**: `docs/performance/CHRONOLOGY.md` (86 phases)
+**Reference**: `docs/performance/CHRONOLOGY.md` (87 phases)
 
 ---
 
@@ -650,7 +655,7 @@ On a 3.0 GHz CPU (typical test hardware):
 | `docs/REVIEW_STANDARDS.md` | Code review requirements |
 | `STABILITY.md` | API stability policy |
 | `SECURITY.md` | Security policy |
-| `docs/performance/CHRONOLOGY.md` | Optimization history (86 phases) |
+| `docs/performance/CHRONOLOGY.md` | Optimization history (87 phases) |
 | `docs/performance/BENCHMARKS.md` | Raw benchmark data |
 | `docs/performance/NOT_APPLICABLE.md` | Algorithms evaluated as N/A |
 | `docs/performance/ALGORITHM_CANDIDATES.md` | Future optimization candidates |
@@ -2359,5 +2364,5 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 
 *Last updated: 2026-02-12*
 *Standard: PEER REVIEWED PUBLISHED ACADEMIC (Zero Compromises)*
-*Optimization Phases: 86 (see docs/performance/CHRONOLOGY.md)*
+*Optimization Phases: 87 (see docs/performance/CHRONOLOGY.md)*
 *Formal Verification: 2968 theorems/harnesses (Verus: 498, Coq R-based: 1366, Coq Z-based: 471, Coq FP: 361, Kani: 272)*

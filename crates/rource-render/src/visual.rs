@@ -430,6 +430,149 @@ pub fn draw_curved_branch<R: Renderer + ?Sized>(
 }
 
 // ============================================================================
+// Phase 87: Zero-Allocation Branch Drawing
+// ============================================================================
+
+/// Screen-space distance threshold (pixels²) below which straight lines are used.
+///
+/// When the squared distance between branch endpoints is less than this,
+/// a straight line is visually indistinguishable from a curve. Avoids
+/// Catmull-Rom computation for short branches.
+///
+/// 50² = 2500 pixels² ≈ branches shorter than ~50px on screen.
+const BRANCH_CURVE_DIST_SQ_THRESHOLD: f32 = 2500.0;
+
+/// Generates Catmull-Rom spline points into a reusable buffer.
+///
+/// Zero-allocation version of [`catmull_rom_spline`]. The buffer is cleared
+/// and repopulated each call, eliminating per-call heap allocation.
+///
+/// # Phase 87
+///
+/// This function is called 200+ times per frame (once per visible file branch).
+/// The allocating version created ~200 `Vec<Vec2>` allocations per frame.
+/// This version reuses a single buffer across all calls.
+pub fn catmull_rom_spline_into(points: &[Vec2], segments_per_span: usize, output: &mut Vec<Vec2>) {
+    output.clear();
+
+    if points.len() < 2 {
+        output.extend_from_slice(points);
+        return;
+    }
+
+    if points.len() == 2 {
+        output.extend_from_slice(points);
+        return;
+    }
+
+    output.reserve(points.len() * segments_per_span + 1);
+
+    let inv_segments = 1.0 / segments_per_span as f32;
+    for i in 0..points.len() - 1 {
+        let p0 = if i == 0 { points[0] } else { points[i - 1] };
+        let p1 = points[i];
+        let p2 = points[i + 1];
+        let p3 = if i + 2 >= points.len() {
+            points[points.len() - 1]
+        } else {
+            points[i + 2]
+        };
+
+        for j in 0..segments_per_span {
+            let t = j as f32 * inv_segments;
+            output.push(catmull_rom_interpolate(p0, p1, p2, p3, t));
+        }
+    }
+
+    if let Some(&last) = points.last() {
+        output.push(last);
+    }
+}
+
+/// Creates a curved branch path into a reusable buffer.
+///
+/// Zero-allocation version of [`create_branch_curve`].
+///
+/// # Phase 87
+///
+/// Eliminates ~200 `Vec<Vec2>` heap allocations per frame by reusing
+/// a caller-owned buffer.
+pub fn create_branch_curve_into(start: Vec2, end: Vec2, tension: f32, output: &mut Vec<Vec2>) {
+    let dir = end - start;
+    let length_sq = dir.x * dir.x + dir.y * dir.y;
+
+    if length_sq < 1.0 {
+        output.clear();
+        output.push(start);
+        output.push(end);
+        return;
+    }
+
+    let mid = start.lerp(end, 0.5);
+    let perp = Vec2::new(-dir.y, dir.x);
+    let offset = perp * tension * 0.15;
+
+    let ctrl1 = start.lerp(mid, 0.33) + offset * 0.5;
+    let ctrl2 = start.lerp(mid, 0.66) + offset;
+    let ctrl3 = mid.lerp(end, 0.33) + offset * 0.5;
+    let ctrl4 = mid.lerp(end, 0.66);
+
+    let control_points = [start, ctrl1, ctrl2, ctrl3, ctrl4, end];
+    catmull_rom_spline_into(&control_points, SPLINE_SEGMENTS / 2, output);
+}
+
+/// Draws a curved branch using a reusable buffer (zero allocation per call).
+///
+/// # Phase 87: Zero-Allocation Branch Drawing
+///
+/// This replaces `draw_curved_branch` in hot loops where branches are drawn
+/// for hundreds of files per frame. Key differences from `draw_curved_branch`:
+///
+/// - Uses caller-owned `curve_buf` to avoid heap allocation per call
+/// - LOD simplification: uses straight lines when endpoints are close on screen
+///   (< ~50 pixels apart), avoiding Catmull-Rom computation entirely
+/// - No branch glow pass (the 0.15 alpha glow is imperceptible for thin file
+///   branches and doubled the number of `draw_spline` calls)
+///
+/// # Arguments
+///
+/// * `curve_buf` - Reusable buffer for curve points (cleared and repopulated)
+/// * Other arguments same as `draw_curved_branch`
+#[inline]
+pub fn draw_curved_branch_buffered<R: Renderer + ?Sized>(
+    renderer: &mut R,
+    start: Vec2,
+    end: Vec2,
+    width: f32,
+    color: Color,
+    use_curve: bool,
+    curve_buf: &mut Vec<Vec2>,
+) {
+    if color.a < 0.01 {
+        return;
+    }
+
+    if !use_curve {
+        renderer.draw_line(start, end, width, color);
+        return;
+    }
+
+    // LOD: Use straight line when branch is short on screen.
+    // Squared distance avoids sqrt() — at < ~50px, curves are indistinguishable.
+    let dx = end.x - start.x;
+    let dy = end.y - start.y;
+    let dist_sq = dx * dx + dy * dy;
+
+    if dist_sq < BRANCH_CURVE_DIST_SQ_THRESHOLD {
+        renderer.draw_line(start, end, width, color);
+        return;
+    }
+
+    create_branch_curve_into(start, end, BRANCH_CURVE_TENSION, curve_buf);
+    renderer.draw_spline(curve_buf, width, color);
+}
+
+// ============================================================================
 // Tests
 // ============================================================================
 

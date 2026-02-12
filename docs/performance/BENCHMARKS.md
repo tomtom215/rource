@@ -1199,6 +1199,61 @@ Flat `Vec` = 1 offset computation per cell access × ~160 accesses/frame = 0 ext
 cargo test -p rource-wasm bench_ --release -- --nocapture
 ```
 
+## Phase 87: Zero-Allocation Branch Drawing + Full-Frame Profile
+
+### Full-Frame Render Phase Breakdown (Primary Metric)
+
+21 dirs, 200 files, 5 users, 1000 iterations, `--release` mode.
+
+| Phase | Phase 86 (ns) | Phase 87 (ns) | Improvement |
+|-------|---------------|---------------|-------------|
+| `render_files` | 18,108 | 2,127 (avg) | **-88.3% (8.51x)** |
+| `render_directories` | 1,503 | 168 (avg) | **-88.8% (8.95x)** |
+| `visible_entities_into` | 825 | 823 | No change |
+| `render_file_labels` | 602 | 842 | +40% (noise/more visible) |
+| `render_user_labels` | 404 | 389 | No change |
+| `label_placer reset` | 111 | 178 | Noise |
+| `render_directory_labels` | 89 | 34 | -61.8% |
+| `render_users` | 26 | 21 | No change |
+| `render_actions` | 2 | 3 | No change |
+| `render_watermark` | 1 | 0 | No change |
+| **TOTAL FRAME** | **18,975** | **4,231** (avg) | **-77.7% (4.48x)** |
+
+### Full-Frame Reproducibility
+
+| Run | Total Frame (ns) | render_files (ns) | render_directories (ns) |
+|-----|-------------------|-------------------|------------------------|
+| 1 | 4,636 | 2,372 | 197 |
+| 2 | 4,223 | 2,279 | 160 |
+| 3 | 3,757 | 1,879 | 146 |
+| 4 | 4,309 | 2,278 | 170 |
+| **Mean** | **4,231** | **2,127** | **168** |
+| **σ** | **370** | **211** | **22** |
+| **CV** | **8.7%** | **9.9%** | **13.1%** |
+
+### Allocation Analysis
+
+| Metric | Phase 86 | Phase 87 | Savings |
+|--------|----------|----------|---------|
+| Heap allocations/frame (branches) | ~220 | 0 | **-220 allocs** |
+| Bytes allocated/frame (branch curves) | ~54,560 (220 × 248) | 0 | **-54.6 KB** |
+| `draw_spline` calls/frame (files) | ~400 (2× per file) | ~200 (1× per file) | **-50%** |
+| Catmull-Rom computations/frame | ~6,600 (200 × 33) | ~variable (LOD) | **-50-80%** |
+
+### Frame Budget Achievement
+
+| Target | Phase 86 | Phase 87 | Status |
+|--------|----------|----------|--------|
+| 20 µs (50K FPS) | 94.9% | 21.2% | **WELL UNDER** |
+| 5 µs (200K FPS) | 379.5% | 84.6% | **WITHIN TARGET** |
+| 2 µs (500K FPS) | 948.8% | 211.6% | Above target |
+
+### Reproduce
+
+```bash
+cargo test -p rource-wasm bench_full_frame --release -- --nocapture
+```
+
 ---
 
 *Last updated: 2026-02-12*

@@ -16,7 +16,7 @@ use super::helpers::{
 };
 use super::label_placer::LabelPlacer;
 use super::{estimate_text_width, RenderContext};
-use crate::rendering::draw_curved_branch;
+use crate::rendering::draw_curved_branch_buffered;
 
 // =============================================================================
 // Tracing Infrastructure (OP-1: Production Telemetry)
@@ -44,12 +44,24 @@ macro_rules! trace_span {
 /// Applies LOD (Level-of-Detail) optimization:
 /// - Files with screen radius < `LOD_MIN_FILE_RADIUS` are skipped entirely
 /// - File-to-directory branches are skipped when zoom < `LOD_MIN_ZOOM_FOR_FILE_BRANCHES`
+///
+/// # Phase 87: Zero-Allocation Branch Drawing
+///
+/// The `curve_buf` parameter is a reusable buffer for branch curve points.
+/// Previously, `draw_curved_branch` allocated a new `Vec<Vec2>` (~31 points)
+/// for every file branch, causing ~200 heap allocations per frame.
+/// Now uses `draw_curved_branch_buffered` which reuses the caller-owned buffer.
+///
+/// Additionally, short branches (< ~50px on screen) use straight lines
+/// instead of Catmull-Rom splines, and the nearly-invisible branch glow
+/// pass (alpha * 0.15) is removed.
 #[inline(never)]
 pub fn render_files<R: Renderer + ?Sized>(
     renderer: &mut R,
     ctx: &RenderContext,
     scene: &rource_core::Scene,
     camera: &rource_core::Camera,
+    curve_buf: &mut Vec<rource_math::Vec2>,
 ) {
     trace_span!("render_files", count = ctx.visible_files.len());
 
@@ -71,19 +83,21 @@ pub fn render_files<R: Renderer + ?Sized>(
             let effective_radius = compute_file_effective_radius(radius);
 
             // Draw connection to parent directory first (behind file)
+            // Phase 87: Uses zero-allocation buffered version with LOD simplification
             if render_branches {
                 if let Some(dir) = scene.directories().get(file.directory()) {
                     let dir_screen = camera.world_to_screen(dir.position());
                     let branch_color =
                         compute_file_branch_color(color, alpha, dir.depth(), ctx.branch_depth_fade);
 
-                    draw_curved_branch(
+                    draw_curved_branch_buffered(
                         renderer,
                         dir_screen,
                         screen_pos,
                         0.8,
                         branch_color,
                         ctx.use_curves,
+                        curve_buf,
                     );
                 }
             }

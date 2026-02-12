@@ -479,6 +479,10 @@ pub struct Rource {
     /// Stores (`action_index`, `progress`) tuples for beam priority selection.
     active_actions_buf: Vec<(usize, f32)>,
 
+    /// Reusable buffer for branch curve points (Phase 87: zero-allocation branch drawing).
+    /// Eliminates ~200 `Vec<Vec2>` heap allocations per frame in `render_files`.
+    curve_buf: Vec<rource_math::Vec2>,
+
     /// Reusable label placer for collision avoidance (avoids per-frame Vec allocation).
     label_placer: render_phases::LabelPlacer,
 
@@ -671,6 +675,8 @@ impl Rource {
             user_label_candidates_buf: Vec::with_capacity(64),
             // Reusable buffer for active actions (avoids per-frame Vec::collect allocation)
             active_actions_buf: Vec::with_capacity(64),
+            // Reusable buffer for branch curve points (Phase 87: ~31 points per curve)
+            curve_buf: Vec::with_capacity(32),
             // Reusable label placer (avoids per-frame Vec allocation)
             label_placer: render_phases::LabelPlacer::new(1.0),
             // Simulation accumulator for fixed-timestep updates (anti-flicker at >2K FPS)
@@ -1601,9 +1607,21 @@ impl Rource {
             branch_opacity_max: self.settings.layout.branch_opacity_max,
         };
 
-        render_directories(renderer, &ctx, &self.scene, &self.camera);
+        render_directories(
+            renderer,
+            &ctx,
+            &self.scene,
+            &self.camera,
+            &mut self.curve_buf,
+        );
         render_directory_labels(renderer, &ctx, &self.scene, &self.camera);
-        render_files(renderer, &ctx, &self.scene, &self.camera);
+        render_files(
+            renderer,
+            &ctx,
+            &self.scene,
+            &self.camera,
+            &mut self.curve_buf,
+        );
         render_actions(
             renderer,
             &ctx,

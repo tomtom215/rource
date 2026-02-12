@@ -14,7 +14,7 @@ use super::helpers::{
     should_render_directory, should_render_directory_branches,
 };
 use super::RenderContext;
-use crate::rendering::draw_curved_branch;
+use crate::rendering::draw_curved_branch_buffered;
 
 // =============================================================================
 // Tracing Infrastructure (OP-1: Production Telemetry)
@@ -42,12 +42,19 @@ macro_rules! trace_span {
 /// Applies LOD (Level-of-Detail) optimization:
 /// - Directories with screen radius < `LOD_MIN_DIR_RADIUS` are skipped
 /// - Directory-to-parent branches are skipped when zoom < `LOD_MIN_ZOOM_FOR_DIR_BRANCHES`
+///
+/// # Phase 87: Zero-Allocation Branch Drawing
+///
+/// The `curve_buf` parameter is a reusable buffer for branch curve points,
+/// shared with `render_files`. Eliminates per-directory heap allocations
+/// for branch curves.
 #[inline(never)] // Prevent inlining for better profiling
 pub fn render_directories<R: Renderer + ?Sized>(
     renderer: &mut R,
     ctx: &RenderContext,
     scene: &rource_core::Scene,
     camera: &rource_core::Camera,
+    curve_buf: &mut Vec<rource_math::Vec2>,
 ) {
     trace_span!("render_directories", count = ctx.visible_dirs.len());
 
@@ -97,13 +104,14 @@ pub fn render_directories<R: Renderer + ?Sized>(
                     );
                     let branch_color = compute_branch_color(dir_color, depth_opacity);
 
-                    draw_curved_branch(
+                    draw_curved_branch_buffered(
                         renderer,
                         parent_screen,
                         screen_pos,
                         branch_width,
                         branch_color,
                         ctx.use_curves,
+                        curve_buf,
                     );
                 }
             }
