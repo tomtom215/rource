@@ -233,6 +233,18 @@ export class Rource {
      */
     getAllUserMetrics(): string | undefined;
     /**
+     * Returns architectural drift index analysis as JSON.
+     *
+     * Measures divergence between directory structure and co-change clusters
+     * using Normalized Mutual Information (NMI).
+     *
+     * # Academic Citations
+     * - Garcia et al. (WICSA 2009): drift detection
+     * - Maqbool & Babri (JSS 2007): hierarchical clustering comparison
+     * - Raghavan et al. (Phys Rev 2007): label propagation
+     */
+    getArchitecturalDrift(): string | undefined;
+    /**
      * Returns the error count for asset loading operations.
      *
      * Asset errors occur when loading images, fonts, or other resources.
@@ -347,6 +359,17 @@ export class Rource {
      */
     getChangeEntropy(): string | undefined;
     /**
+     * Returns change propagation prediction as JSON.
+     *
+     * Predicts which files need concurrent modification based on
+     * historical co-change patterns and transitive cascade analysis.
+     *
+     * # Academic Citations
+     * - Ying et al. (MSR 2004): change propagation
+     * - Hassan & Holt (ICSM 2004): predictive change coupling
+     */
+    getChangePropagation(): string | undefined;
+    /**
      * Returns code churn volatility per file (Nagappan & Ball 2005).
      */
     getChurnVolatility(): string | undefined;
@@ -377,6 +400,16 @@ export class Rource {
      */
     getCommitCadence(): string | undefined;
     /**
+     * Returns commit cohesion index analysis as JSON.
+     *
+     * Measures whether commits are atomic (tightly related changes) or tangled.
+     *
+     * # Academic Citations
+     * - Herzig & Zeller (ICSE 2013): tangled commits
+     * - Kirinuki et al. (SANER 2014): untangling changes
+     */
+    getCommitCohesion(): string | undefined;
+    /**
      * Returns per-commit complexity / tangled change scores (Herzig & Zeller 2013).
      */
     getCommitComplexity(): string | undefined;
@@ -399,6 +432,17 @@ export class Rource {
      */
     getCommitFileCount(index: number): number;
     /**
+     * Returns commit message entropy analysis as JSON.
+     *
+     * Measures the information density and quality of commit messages
+     * using Shannon entropy and cross-entropy.
+     *
+     * # Academic Citations
+     * - Dyer et al. (MSR 2013): commit message mining
+     * - Hindle et al. (ICSE 2012): naturalness of code
+     */
+    getCommitMessageEntropy(): string | undefined;
+    /**
      * Returns the timestamp for a commit at the given index.
      */
     getCommitTimestamp(index: number): number;
@@ -416,6 +460,18 @@ export class Rource {
      * Conway's Law quantified (Cataldo et al. 2008).
      */
     getCongruence(): string | undefined;
+    /**
+     * Returns contextual complexity (working set size) analysis as JSON.
+     *
+     * For each file, computes the number of other files a developer must
+     * simultaneously understand to safely modify it.
+     *
+     * # Academic Citations
+     * - Bavota et al. (ICSM 2013): structural-semantic coupling
+     * - Gall et al. (ICSE 1998): logical coupling from co-changes
+     * - Denning (CACM 1968): working set model
+     */
+    getContextualComplexity(): string | undefined;
     /**
      * Returns contribution inequality / Gini coefficient analysis as JSON.
      *
@@ -636,8 +692,8 @@ export class Rource {
     /**
      * Returns aggregated academic metrics for a specific file as JSON.
      *
-     * Computes the full insights index and performs O(1) lookup by file path.
-     * Returns `null` if the file is not found in the commit history.
+     * Performs O(1) lookup from the cached insights index (computed at load time).
+     * Returns `null` if no commits are loaded or the file is not found.
      *
      * # Academic Citations
      *
@@ -800,9 +856,9 @@ export class Rource {
      */
     getHotspots(limit?: number | null): string | undefined;
     /**
-     * Computes and returns comprehensive repository insights as JSON.
+     * Returns comprehensive repository insights as JSON from the cached report.
      *
-     * Analyzes the loaded commit history to produce research-backed metrics:
+     * Includes research-backed metrics:
      *
      * - **Hotspots**: Files with high change frequency (defect predictors)
      * - **Change Coupling**: Hidden dependencies via co-change patterns
@@ -816,8 +872,7 @@ export class Rource {
      *
      * # Performance
      *
-     * Computed from commit history at call time (not per-frame).
-     * Typical computation time: <10ms for 10k commits.
+     * Report is cached at load time (Phase 89). This method only serializes.
      */
     getInsights(): string | undefined;
     /**
@@ -848,6 +903,17 @@ export class Rource {
      * Returns per-directory knowledge distribution entropy (Constantinou & Mens 2017).
      */
     getKnowledgeDistribution(): string | undefined;
+    /**
+     * Returns knowledge half-life analysis as JSON.
+     *
+     * Models exponential knowledge decay with per-file adaptive decay rates.
+     *
+     * # Academic Citations
+     * - Fritz et al. (ICSE 2010): degree-of-knowledge model
+     * - Robillard et al. (IEEE Software 2014): developer memory
+     * - Ebbinghaus (1885): forgetting curve
+     */
+    getKnowledgeHalfLife(): string | undefined;
     /**
      * Returns knowledge map and silo analysis as JSON.
      *
@@ -954,6 +1020,17 @@ export class Rource {
      */
     getStatsBufferPtr(): number;
     /**
+     * Returns succession readiness analysis as JSON.
+     *
+     * For each file, scores how prepared the team is for the primary
+     * contributor to become unavailable.
+     *
+     * # Academic Citations
+     * - Ricca et al. (JSS 2011): developer succession
+     * - Rigby & Bird (FSE 2013): knowledge distribution
+     */
+    getSuccessionReadiness(): string | undefined;
+    /**
      * Returns language/technology distribution by file extension.
      */
     getTechDistribution(): string | undefined;
@@ -1027,8 +1104,8 @@ export class Rource {
     /**
      * Returns aggregated academic metrics for a specific developer as JSON.
      *
-     * Computes the full insights index and performs O(1) lookup by author name.
-     * Returns `null` if the author is not found in the commit history.
+     * Performs O(1) lookup from the cached insights index (computed at load time).
+     * Returns `null` if no commits are loaded or the author is not found.
      *
      * # Academic Citations
      *
@@ -1922,6 +1999,7 @@ export interface InitOutput {
     readonly rource_getActivityHeatmap: (a: number, b: number) => void;
     readonly rource_getAllFileMetrics: (a: number, b: number) => void;
     readonly rource_getAllUserMetrics: (a: number, b: number) => void;
+    readonly rource_getArchitecturalDrift: (a: number, b: number) => void;
     readonly rource_getAssetErrorCount: (a: number) => bigint;
     readonly rource_getAuthorColor: (a: number, b: number, c: number, d: number) => void;
     readonly rource_getAuthors: (a: number, b: number) => void;
@@ -1934,17 +2012,21 @@ export interface InitOutput {
     readonly rource_getChangeBursts: (a: number, b: number) => void;
     readonly rource_getChangeCoupling: (a: number, b: number, c: number) => void;
     readonly rource_getChangeEntropy: (a: number, b: number) => void;
+    readonly rource_getChangePropagation: (a: number, b: number) => void;
     readonly rource_getChurnVolatility: (a: number, b: number) => void;
     readonly rource_getCircadianRisk: (a: number, b: number) => void;
     readonly rource_getCodebaseGrowth: (a: number, b: number) => void;
     readonly rource_getCommitAuthor: (a: number, b: number, c: number) => void;
     readonly rource_getCommitCadence: (a: number, b: number) => void;
+    readonly rource_getCommitCohesion: (a: number, b: number) => void;
     readonly rource_getCommitComplexity: (a: number, b: number) => void;
     readonly rource_getCommitDirectoryCount: (a: number) => number;
     readonly rource_getCommitFileCount: (a: number, b: number) => number;
+    readonly rource_getCommitMessageEntropy: (a: number, b: number) => void;
     readonly rource_getCommitTimestamp: (a: number, b: number) => number;
     readonly rource_getConfigErrorCount: (a: number) => bigint;
     readonly rource_getCongruence: (a: number, b: number) => void;
+    readonly rource_getContextualComplexity: (a: number, b: number) => void;
     readonly rource_getContributionInequality: (a: number, b: number) => void;
     readonly rource_getDateRange: (a: number, b: number) => void;
     readonly rource_getDefectPatterns: (a: number, b: number) => void;
@@ -1978,6 +2060,7 @@ export interface InitOutput {
     readonly rource_getInsightsSummary: (a: number, b: number) => void;
     readonly rource_getIoErrorCount: (a: number) => bigint;
     readonly rource_getKnowledgeDistribution: (a: number, b: number) => void;
+    readonly rource_getKnowledgeHalfLife: (a: number, b: number) => void;
     readonly rource_getKnowledgeMap: (a: number, b: number) => void;
     readonly rource_getLayoutConfig: (a: number, b: number) => void;
     readonly rource_getMaxCommits: (a: number) => number;
@@ -1995,6 +2078,7 @@ export interface InitOutput {
     readonly rource_getSpeed: (a: number) => number;
     readonly rource_getStatsBufferLen: (a: number) => number;
     readonly rource_getStatsBufferPtr: (a: number) => number;
+    readonly rource_getSuccessionReadiness: (a: number, b: number) => void;
     readonly rource_getTechDistribution: (a: number, b: number) => void;
     readonly rource_getTechExpertise: (a: number, b: number) => void;
     readonly rource_getTemporalPatterns: (a: number, b: number) => void;
@@ -2093,9 +2177,9 @@ export interface InitOutput {
     readonly rource_zoomToward: (a: number, b: number, c: number, d: number) => void;
     readonly init_panic_hook: () => void;
     readonly rource_isTracingEnabled: (a: number) => number;
-    readonly __wasm_bindgen_func_elem_3199: (a: number, b: number) => void;
-    readonly __wasm_bindgen_func_elem_7947: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_3200: (a: number, b: number, c: number) => void;
+    readonly __wasm_bindgen_func_elem_3346: (a: number, b: number) => void;
+    readonly __wasm_bindgen_func_elem_8091: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_3347: (a: number, b: number, c: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;

@@ -307,6 +307,7 @@ impl CommitStore {
             timestamp: compact.timestamp,
             author: author.to_string(),
             email: None,
+            message: None,
             files,
         })
     }

@@ -4,13 +4,13 @@
 /**
  * Rource - Repository Insights Dashboard
  *
- * Mobile-first tabbed dashboard displaying 33 research-backed repository
- * health metrics. Data is lazy-loaded on first panel open and cached
- * per repository load.
+ * Mobile-first tabbed dashboard displaying 40 research-backed repository
+ * health metrics across 6 tabs. Data is lazy-loaded on first panel open
+ * and cached per repository load.
  *
  * Module structure:
  *   insights.js          - Core state, tab management, data loading, dashboard
- *   insights-renderers.js - Tab content renderers (hotspots, risk, team, temporal, quality)
+ *   insights-renderers.js - Tab content renderers (hotspots, risk, team, temporal, quality, intelligence)
  *   insights-tables.js   - Table rendering functions (data tables for each metric)
  *   insights-utils.js    - Formatting helpers and shared UI components
  *
@@ -31,12 +31,15 @@ import {
     getReleaseRhythm, getKnowledgeDistribution,
     getChurnVolatility, getTruckFactor, getTurnoverImpact,
     getCommitComplexity, getDefectPatterns,
-    getTechDistribution, getActivityHeatmap, getTechExpertise
+    getTechDistribution, getActivityHeatmap, getTechExpertise,
+    getContextualComplexity, getCommitCohesion, getChangePropagation,
+    getCommitMessageEntropy, getKnowledgeHalfLife,
+    getArchitecturalDrift, getSuccessionReadiness
 } from '../wasm-api.js';
 import { formatInt, escapeHtml } from './insights-utils.js';
 import {
     renderHotspotsTab, renderRiskTab, renderTeamTab,
-    renderTemporalTab, renderQualityTab
+    renderTemporalTab, renderQualityTab, renderIntelligenceTab
 } from './insights-renderers.js';
 
 // Module state
@@ -261,6 +264,15 @@ function ensureTabData(tabName) {
             if (!cachedData.commitComplexity) cachedData.commitComplexity = unwrap(getCommitComplexity(), 'commitComplexity');
             if (!cachedData.defectPatterns) cachedData.defectPatterns = unwrap(getDefectPatterns(), 'defectPatterns');
             break;
+        case 'intelligence':
+            if (!cachedData.contextualComplexity) cachedData.contextualComplexity = unwrap(getContextualComplexity(), 'contextualComplexity');
+            if (!cachedData.commitCohesion) cachedData.commitCohesion = unwrap(getCommitCohesion(), 'commitCohesion');
+            if (!cachedData.changePropagation) cachedData.changePropagation = unwrap(getChangePropagation(), 'changePropagation');
+            if (!cachedData.commitMessageEntropy) cachedData.commitMessageEntropy = unwrap(getCommitMessageEntropy(), 'commitMessageEntropy');
+            if (!cachedData.knowledgeHalfLife) cachedData.knowledgeHalfLife = unwrap(getKnowledgeHalfLife(), 'knowledgeHalfLife');
+            if (!cachedData.architecturalDrift) cachedData.architecturalDrift = unwrap(getArchitecturalDrift(), 'architecturalDrift');
+            if (!cachedData.successionReadiness) cachedData.successionReadiness = unwrap(getSuccessionReadiness(), 'successionReadiness');
+            break;
     }
 }
 
@@ -359,7 +371,7 @@ function showLoading() {
 
 /**
  * Renders a tab into a specific target context.
- * @param {string} tabName - Tab identifier (hotspots, risk, team, temporal, quality)
+ * @param {string} tabName - Tab identifier (hotspots, risk, team, temporal, quality, intelligence)
  * @param {'sidebar'|'dashboard'} target - Which DOM context to render into
  */
 function renderTabInto(tabName, target) {
@@ -387,6 +399,9 @@ function renderTabInto(tabName, target) {
             break;
         case 'quality':
             body.innerHTML = renderQualityTab(cachedData);
+            break;
+        case 'intelligence':
+            body.innerHTML = renderIntelligenceTab(cachedData);
             break;
     }
 

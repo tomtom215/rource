@@ -766,6 +766,7 @@ mod tests {
         CommitRecord {
             timestamp: ts,
             author: author.to_string(),
+            message: None,
             files: files
                 .iter()
                 .map(|(p, a)| FileRecord {

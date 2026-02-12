@@ -13,7 +13,7 @@ import {
     formatNumber, formatFixed, formatInt, formatPercentage,
     escapeHtml, capitalize, giniInterpretation, emptyState,
     renderMetricSection, renderTabIntro, renderKeyValueList,
-    renderMetricNav
+    renderMetricNav, truncatePath
 } from './insights-utils.js';
 
 import {
@@ -68,6 +68,22 @@ const CITE = {
     claes2018: { text: 'Claes et al. 2018, ICSE', url: '' },
     begel2023: { text: 'Begel et al. 2023', url: '' },
     spinellis2021: { text: 'Spinellis, Louridas & Kechagia 2021, PeerJ CS', url: 'https://doi.org/10.7717/peerj-cs.372' },
+    // Intelligence tab citations (M1-M7)
+    bavota2013: { text: 'Bavota et al. 2013, ICSM', url: 'https://doi.org/10.1109/ICSM.2013.24' },
+    gall1998: { text: 'Gall, Hajek & Jazayeri 1998, ICSE', url: 'https://doi.org/10.1109/ICSE.1998.671583' },
+    denning1968: { text: 'Denning 1968, CACM', url: 'https://doi.org/10.1145/363095.363141' },
+    herzig2013_icse: { text: 'Herzig & Zeller 2013, ICSE', url: 'https://doi.org/10.1109/ICSE.2013.6606588' },
+    kirinuki2014: { text: 'Kirinuki et al. 2014, SANER', url: '' },
+    hassan2004: { text: 'Hassan & Holt 2004, ICSM', url: 'https://doi.org/10.1109/ICSM.2004.1357802' },
+    zimmermann2005: { text: 'Zimmermann et al. 2005, ESEC/FSE', url: 'https://doi.org/10.1145/1081706.1081728' },
+    dyer2013: { text: 'Dyer et al. 2013, MSR', url: 'https://doi.org/10.1109/MSR.2013.6624016' },
+    hindle2012: { text: 'Hindle et al. 2012, ICSE', url: 'https://doi.org/10.1109/ICSE.2012.6227135' },
+    fritz2010_dok: { text: 'Fritz et al. 2010, ICSE', url: 'https://doi.org/10.1145/1806799.1806856' },
+    robillard2014: { text: 'Robillard et al. 2014, IEEE Software', url: '' },
+    garcia2009: { text: 'Garcia et al. 2009, WICSA', url: 'https://doi.org/10.1109/WICSA.2009.5290649' },
+    maqbool2007: { text: 'Maqbool & Babri 2007, JSS', url: 'https://doi.org/10.1016/j.jss.2006.10.029' },
+    raghavan2007: { text: 'Raghavan, Albert & Kumara 2007, Phys Rev E', url: 'https://doi.org/10.1103/PhysRevE.76.036106' },
+    ricca2011: { text: 'Ricca et al. 2011, JSS', url: 'https://doi.org/10.1016/j.jss.2011.03.033' },
 };
 
 /**
@@ -766,4 +782,270 @@ export function renderQualityTab(cachedData) {
     ));
 
     return parts.join('');
+}
+
+/**
+ * Intelligence tab: 7 novel research metrics (M1-M7).
+ *
+ * These metrics are original combinations of published techniques, producing
+ * continuous multi-dimensional scores where prior work used binary indicators.
+ *
+ * Data sources (all verified against insights.rs):
+ * - cachedData.contextualComplexity: unwrapped from getContextualComplexity().contextualComplexity
+ * - cachedData.commitCohesion: unwrapped from getCommitCohesion().commitCohesion
+ * - cachedData.changePropagation: unwrapped from getChangePropagation().changePropagation
+ * - cachedData.commitMessageEntropy: unwrapped from getCommitMessageEntropy().commitMessageEntropy
+ * - cachedData.knowledgeHalfLife: unwrapped from getKnowledgeHalfLife().knowledgeHalfLife
+ * - cachedData.architecturalDrift: unwrapped from getArchitecturalDrift().architecturalDrift
+ * - cachedData.successionReadiness: unwrapped from getSuccessionReadiness().successionReadiness
+ */
+export function renderIntelligenceTab(cachedData) {
+    const parts = [];
+
+    parts.push(renderTabIntro(
+        'Research Intelligence',
+        'Novel metrics combining peer-reviewed techniques in new ways. Each metric produces continuous, multi-dimensional scores where prior work used binary indicators.'
+    ));
+
+    parts.push(renderMetricNav([
+        'Contextual Complexity', 'Commit Cohesion', 'Change Propagation',
+        'Commit Message Quality', 'Knowledge Half-Life',
+        'Architectural Drift', 'Succession Readiness'
+    ]));
+
+    // M1: Contextual Complexity
+    const ctx = cachedData.contextualComplexity;
+    if (ctx) {
+        const files = ctx.files || [];
+        const topFiles = files.slice(0, 15);
+        parts.push(renderMetricSection(
+            'Contextual Complexity',
+            'For each file, the number of other files a developer must simultaneously understand to safely modify it \u2014 the file\u2019s cognitive working set.',
+            [CITE.bavota2013, CITE.gall1998, CITE.denning1968],
+            topFiles.length > 0
+                ? renderContextualComplexityTable(topFiles)
+                : emptyState('No contextual complexity data', 'Requires coupling pairs from co-change analysis.'),
+            `Average context size: ${formatFixed(ctx.avgContextSize, 1)} files. Threshold (P75): ${formatFixed(ctx.threshold, 3)}. ${ctx.filesWithContext || 0} files have non-trivial context sets. Maximum: ${ctx.maxContextSize || 0} files.`
+        ));
+    }
+
+    // M2: Commit Cohesion
+    const coh = cachedData.commitCohesion;
+    if (coh) {
+        const devs = coh.developerCohesion || [];
+        const topDevs = devs.slice(0, 15);
+        const cohHealth = (coh.medianCohesion || 0) > 0.7 ? 'well-focused commits' : (coh.medianCohesion || 0) > 0.4 ? 'moderately focused' : 'many tangled commits';
+        parts.push(renderMetricSection(
+            'Commit Cohesion',
+            'Measures whether commits are atomic (tightly related changes) or tangled (mixing unrelated modifications). Tangled commits make review harder and introduce more bugs.',
+            [CITE.herzig2013_icse],
+            topDevs.length > 0
+                ? renderCommitCohesionTable(topDevs)
+                : emptyState('No commit cohesion data', 'Requires commits with multiple file changes.'),
+            `Median cohesion: ${formatFixed(coh.medianCohesion, 3)} (${cohHealth}). Tangled ratio: ${formatPercentage(coh.tangledRatio)}. ${coh.totalAnalyzed || 0} commits analyzed.`
+        ));
+    }
+
+    // M3: Change Propagation
+    const prop = cachedData.changePropagation;
+    if (prop) {
+        const files = prop.files || [];
+        const topFiles = files.slice(0, 15);
+        parts.push(renderMetricSection(
+            'Change Propagation',
+            'Predicts which files will need concurrent modification when you change a file, with transitive cascade depth up to 3 levels.',
+            [CITE.hassan2004, CITE.zimmermann2005],
+            topFiles.length > 0
+                ? renderChangePropagationTable(topFiles)
+                : emptyState('No propagation data', 'Requires coupling pairs from co-change analysis.'),
+            `Average risk score: ${formatFixed(prop.avgRiskScore, 3)}. Average cascade depth: ${formatFixed(prop.avgExpectedDepth, 2)}. ${prop.cascadeCount || 0} files have depth-3 cascades.`
+        ));
+    }
+
+    // M4: Commit Message Quality
+    const cme = cachedData.commitMessageEntropy;
+    if (cme) {
+        const devs = cme.developerQuality || [];
+        const topDevs = devs.slice(0, 15);
+        parts.push(renderMetricSection(
+            'Commit Message Quality',
+            'Measures the information density and quality of commit messages using Shannon entropy and cross-entropy against a corpus model.',
+            [CITE.dyer2013, CITE.hindle2012],
+            topDevs.length > 0
+                ? renderMessageQualityTable(topDevs)
+                : emptyState('No message quality data', 'Requires commits with non-empty messages.'),
+            `Median info density: ${formatFixed(cme.medianInfoDensity, 3)}. Low-info ratio: ${formatPercentage(cme.lowInfoRatio)}. ${cme.noMessageCount || 0} commits had no message. ${cme.totalAnalyzed || 0} analyzed.`
+        ));
+    }
+
+    // M5: Knowledge Half-Life
+    const khl = cachedData.knowledgeHalfLife;
+    if (khl) {
+        const files = khl.files || [];
+        const topFiles = files.slice(0, 15);
+        const freshness = khl.teamKnowledgeFreshness || 0;
+        const freshnessLabel = freshness > 0.7 ? 'knowledge is fresh' : freshness > 0.4 ? 'some knowledge decay' : 'significant knowledge loss';
+        parts.push(renderMetricSection(
+            'Knowledge Half-Life',
+            'Models exponential knowledge decay per-file. As time passes since a developer\u2019s last edit, their understanding fades \u2014 like Ebbinghaus\u2019 forgetting curve.',
+            [CITE.fritz2010_dok, CITE.rigby2013],
+            topFiles.length > 0
+                ? renderKnowledgeHalfLifeTable(topFiles)
+                : emptyState('No knowledge half-life data', 'Requires file-level commit history with timestamps.'),
+            `Team freshness: ${formatFixed(freshness, 3)} (${freshnessLabel}). ${khl.cliffCount || 0} knowledge cliffs. Median half-life: ${formatFixed(khl.medianHalfLifeDays, 0)} days (range: ${formatFixed(khl.minHalfLifeDays, 0)}\u2013${formatFixed(khl.maxHalfLifeDays, 0)}).`
+        ));
+    }
+
+    // M6: Architectural Drift
+    const ad = cachedData.architecturalDrift;
+    if (ad) {
+        const dirs = ad.directories || [];
+        const topDirs = dirs.slice(0, 15);
+        const driftLevel = (ad.driftIndex || 0) > 0.5 ? 'significant drift' : (ad.driftIndex || 0) > 0.2 ? 'moderate drift' : 'well-aligned';
+        parts.push(renderMetricSection(
+            'Architectural Drift',
+            'Measures divergence between your directory structure and how files actually co-change. Drift means the architecture on disk no longer reflects the architecture in practice.',
+            [CITE.garcia2009, CITE.maqbool2007, CITE.raghavan2007],
+            topDirs.length > 0
+                ? renderArchitecturalDriftTable(topDirs)
+                : emptyState('No architectural drift data', 'Requires coupling pairs and directory structure.'),
+            `Drift index: ${formatFixed(ad.driftIndex, 3)} (${driftLevel}). NMI: ${formatFixed(ad.nmi, 3)}. ${ad.clusterCount || 0} co-change clusters found. ${ad.misplacedCount || 0} misplaced files. ${(ad.ghostModules || []).length} ghost modules.`
+        ));
+    }
+
+    // M7: Succession Readiness
+    const sr = cachedData.successionReadiness;
+    if (sr) {
+        const files = sr.files || [];
+        const topFiles = files.slice(0, 15);
+        const readiness = sr.codebaseReadiness || 0;
+        const readinessLabel = readiness > 0.5 ? 'well-prepared' : readiness > 0.2 ? 'partially prepared' : 'at risk';
+        parts.push(renderMetricSection(
+            'Succession Readiness',
+            'For each file, scores how prepared the team is for the primary contributor to become unavailable. Combines knowledge freshness, commit depth, and directory similarity.',
+            [CITE.ricca2011, CITE.rigby2013],
+            topFiles.length > 0
+                ? renderSuccessionReadinessTable(topFiles)
+                : emptyState('No succession data', 'Requires knowledge half-life data and multiple contributors.'),
+            `Codebase readiness: ${formatFixed(readiness, 3)} (${readinessLabel}). ${sr.singlePointOfFailureCount || 0} single points of failure. ${sr.adequateSuccessionCount || 0} files with adequate succession (> 0.5). ${sr.totalFiles || 0} total files.`
+        ));
+    }
+
+    return parts.join('');
+}
+
+// ============================================================================
+// Intelligence Tab Table Renderers
+// ============================================================================
+
+function renderContextualComplexityTable(files) {
+    let html = '<div class="insights-table-wrapper"><table class="insights-table"><thead><tr>';
+    html += '<th>File</th><th>Context Size</th><th>Weighted</th><th>Top Context Files</th>';
+    html += '</tr></thead><tbody>';
+    for (const f of files) {
+        const ctxFiles = (f.contextFiles || []).slice(0, 3).map(
+            ([g, c]) => `${escapeHtml(truncatePath(g))} (${formatFixed(c, 2)})`
+        ).join(', ');
+        html += `<tr><td title="${escapeHtml(f.path)}">${escapeHtml(truncatePath(f.path))}</td>`;
+        html += `<td>${f.contextSize || 0}</td>`;
+        html += `<td>${formatFixed(f.weightedComplexity, 2)}</td>`;
+        html += `<td class="insights-cell-small">${ctxFiles || '\u2014'}</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+    return html;
+}
+
+function renderCommitCohesionTable(devs) {
+    let html = '<div class="insights-table-wrapper"><table class="insights-table"><thead><tr>';
+    html += '<th>Developer</th><th>Median Cohesion</th><th>Commits</th><th>Tangled Ratio</th>';
+    html += '</tr></thead><tbody>';
+    for (const d of devs) {
+        const cohClass = (d.medianCohesion || 0) < 0.4 ? ' class="insights-cell-warn"' : '';
+        html += `<tr><td>${escapeHtml(d.author)}</td>`;
+        html += `<td${cohClass}>${formatFixed(d.medianCohesion, 3)}</td>`;
+        html += `<td>${d.commitCount || 0}</td>`;
+        html += `<td>${formatPercentage(d.tangledRatio)}</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+    return html;
+}
+
+function renderChangePropagationTable(files) {
+    let html = '<div class="insights-table-wrapper"><table class="insights-table"><thead><tr>';
+    html += '<th>File</th><th>Risk Score</th><th>Expected Depth</th><th>Top Predictions</th>';
+    html += '</tr></thead><tbody>';
+    for (const f of files) {
+        const preds = (f.predictions || []).slice(0, 3).map(
+            ([g, p]) => `${escapeHtml(truncatePath(g))} (${formatFixed(p, 2)})`
+        ).join(', ');
+        html += `<tr><td title="${escapeHtml(f.path)}">${escapeHtml(truncatePath(f.path))}</td>`;
+        html += `<td>${formatFixed(f.riskScore, 3)}</td>`;
+        html += `<td>${formatFixed(f.expectedDepth, 2)}</td>`;
+        html += `<td class="insights-cell-small">${preds || '\u2014'}</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+    return html;
+}
+
+function renderMessageQualityTable(devs) {
+    let html = '<div class="insights-table-wrapper"><table class="insights-table"><thead><tr>';
+    html += '<th>Developer</th><th>Info Density</th><th>Low-Info Ratio</th><th>Commits</th>';
+    html += '</tr></thead><tbody>';
+    for (const d of devs) {
+        const warnClass = (d.lowInfoRatio || 0) > 0.5 ? ' class="insights-cell-warn"' : '';
+        html += `<tr><td>${escapeHtml(d.author)}</td>`;
+        html += `<td>${formatFixed(d.medianInfoDensity, 3)}</td>`;
+        html += `<td${warnClass}>${formatPercentage(d.lowInfoRatio)}</td>`;
+        html += `<td>${d.commitCount || 0}</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+    return html;
+}
+
+function renderKnowledgeHalfLifeTable(files) {
+    let html = '<div class="insights-table-wrapper"><table class="insights-table"><thead><tr>';
+    html += '<th>File</th><th>Freshness</th><th>Top Expert</th><th>Half-Life (days)</th><th>Cliff</th>';
+    html += '</tr></thead><tbody>';
+    for (const f of files) {
+        const cliffIcon = f.isKnowledgeCliff ? '\u26a0' : '\u2014';
+        const freshClass = (f.knowledgeFreshness || 0) < 0.3 ? ' class="insights-cell-warn"' : '';
+        html += `<tr><td title="${escapeHtml(f.path)}">${escapeHtml(truncatePath(f.path))}</td>`;
+        html += `<td${freshClass}>${formatFixed(f.knowledgeFreshness, 3)}</td>`;
+        html += `<td>${escapeHtml(f.topExpert || '\u2014')}</td>`;
+        html += `<td>${formatFixed(f.halfLifeDays, 0)}</td>`;
+        html += `<td>${cliffIcon}</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+    return html;
+}
+
+function renderArchitecturalDriftTable(dirs) {
+    let html = '<div class="insights-table-wrapper"><table class="insights-table"><thead><tr>';
+    html += '<th>Directory</th><th>Clusters</th><th>Dominant %</th><th>Files</th>';
+    html += '</tr></thead><tbody>';
+    for (const d of dirs) {
+        const mixedClass = (d.clusterCount || 0) > 2 ? ' class="insights-cell-warn"' : '';
+        html += `<tr><td title="${escapeHtml(d.directory)}">${escapeHtml(truncatePath(d.directory))}</td>`;
+        html += `<td${mixedClass}>${d.clusterCount || 0}</td>`;
+        html += `<td>${formatPercentage(d.dominantClusterPct)}</td>`;
+        html += `<td>${d.fileCount || 0}</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+    return html;
+}
+
+function renderSuccessionReadinessTable(files) {
+    let html = '<div class="insights-table-wrapper"><table class="insights-table"><thead><tr>';
+    html += '<th>File</th><th>Readiness</th><th>Primary</th><th>Best Successor</th><th>Gap</th>';
+    html += '</tr></thead><tbody>';
+    for (const f of files) {
+        const readClass = (f.readiness || 0) < 0.2 ? ' class="insights-cell-warn"' : '';
+        html += `<tr><td title="${escapeHtml(f.path)}">${escapeHtml(truncatePath(f.path))}</td>`;
+        html += `<td${readClass}>${formatFixed(f.readiness, 3)}</td>`;
+        html += `<td>${escapeHtml(f.primaryContributor || '\u2014')}</td>`;
+        html += `<td>${escapeHtml(f.bestSuccessor || 'None')}</td>`;
+        html += `<td>${formatFixed(f.successionGap, 3)}</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+    return html;
 }
