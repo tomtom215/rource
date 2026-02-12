@@ -1529,6 +1529,7 @@ impl Rource {
     }
 
     /// Renders the current frame to the canvas.
+    #[allow(clippy::too_many_lines)]
     fn render(&mut self) {
         if self.backend.is_context_lost() {
             return;

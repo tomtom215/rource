@@ -82,7 +82,7 @@
 - **68% memory savings** on large repositories via string interning and compact storage
 - **GPU acceleration** in browsers via WebGPU or WebGL2 (with automatic CPU fallback)
 - **Tested with 100k+ commit repos** (Home Assistant: 103,533 commits, 533,366 file changes)
-- **84 optimization phases** documented with picosecond/nanosecond-level measurements
+- **87 optimization phases** documented with picosecond/nanosecond-level measurements
 - **50,000 FPS target** on test hardware (20 µs frame budget)
 - **132 WASM functions profiled** with criterion benchmarks (100+ samples, 95% CI)
 
@@ -509,7 +509,7 @@ rource/
 
 | Document | Description |
 |----------|-------------|
-| [docs/performance/CHRONOLOGY.md](docs/performance/CHRONOLOGY.md) | 84 optimization phases with measurements |
+| [docs/performance/CHRONOLOGY.md](docs/performance/CHRONOLOGY.md) | 87 optimization phases with measurements |
 | [docs/performance/BENCHMARKS.md](docs/performance/BENCHMARKS.md) | Raw benchmark data and methodology |
 | [docs/performance/ALGORITHMIC_COMPLEXITY.md](docs/performance/ALGORITHMIC_COMPLEXITY.md) | Big-O analysis of algorithms |
 | [docs/verification/FORMAL_VERIFICATION.md](docs/verification/FORMAL_VERIFICATION.md) | Formal verification overview and index (2968 theorems/harnesses) |
