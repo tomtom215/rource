@@ -313,13 +313,13 @@ Benchmark (Home Assistant Core: 103k commits, 533k file changes):
 
 ## Testing Strategy
 
-- **Unit tests**: Per-module, 2900+ tests across crates
+- **Unit tests**: Per-module, 3500+ tests across crates
 - **Integration tests**: End-to-end parsing and rendering
 - **Visual tests**: Headless frame export for regression testing
 - **Property tests**: Math operations with random inputs
 - **Doc tests**: Examples in rustdoc comments
 
-Total: **2900+ tests** across the codebase
+Total: **3500+ tests** across the codebase
 
 ## Future Considerations
 

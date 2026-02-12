@@ -128,6 +128,9 @@
 | 298 | Branch glow pass at 0.15 alpha on 0.8px lines is imperceptible | Second `draw_spline` call doubled GPU draw calls for invisible visual effect | Remove glow pass for file branches; single `draw_spline` per branch is sufficient |
 | 299 | Optimizing WASM without updating CLI creates code drift and tech debt | CLI and WASM both have separate rendering code using same shared functions | ALWAYS update both CLI and WASM together when changing shared rendering patterns |
 | 300 | Full-frame profiling with NoOpRenderer reveals true bottleneck distribution | Without GPU noise, `render_files` was 95.4% of CPU frame time (18.11 µs of 18.98 µs) | Build zero-GPU-cost NoOpRenderer benchmark covering ALL render phases before optimizing |
+| 301 | Existing insights engine already has 20+ academic metrics — build aggregation, not reimplementation | `compute_insights()` produces hotspots, ownership, coupling, lifecycle, profiles, cadence, network, etc. | Read codebase first; create `InsightsIndex::from_report()` aggregation over existing data |
+| 302 | `usize` vs `u32` mismatch at aggregation boundary (profiles module uses `usize`, compact structs use `u32`) | Rust insight modules use `usize`; WASM is 32-bit where explicit cast needed | Use `as u32` at aggregation boundary; document theoretical overflow impossibility for git repos |
+| 303 | Benchmark spike after full test suite is CPU thermal throttling, not regression | CPU frequency drops after sustained workload; first benchmark captures thermal state | Run benchmark TWICE after test suite; use second run as reliable measurement |
 
 ---
 

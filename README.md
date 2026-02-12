@@ -74,7 +74,7 @@
 | **Runs in Browser** | Yes (WASM) | No |
 | **Binary Size** | ~3.8 MB | ~10 MB |
 | **Memory (100k commits)** | ~16 MB | ~52 MB |
-| **Test Coverage** | 2900+ tests | - |
+| **Test Coverage** | 3500+ tests | - |
 | **Rendering** | CPU + WebGL2 + wgpu | OpenGL only |
 
 ### Performance Highlights
@@ -82,7 +82,7 @@
 - **68% memory savings** on large repositories via string interning and compact storage
 - **GPU acceleration** in browsers via WebGPU or WebGL2 (with automatic CPU fallback)
 - **Tested with 100k+ commit repos** (Home Assistant: 103,533 commits, 533,366 file changes)
-- **87 optimization phases** documented with picosecond/nanosecond-level measurements
+- **88 optimization phases** documented with picosecond/nanosecond-level measurements
 - **50,000 FPS target** on test hardware (20 µs frame budget)
 - **132 WASM functions profiled** with criterion benchmarks (100+ samples, 95% CI)
 
@@ -474,10 +474,10 @@ rource/
 ├── crates/
 │   ├── rource-math/      558 tests   Math primitives (Vec2, Vec3, Mat4, Color)
 │   ├── rource-vcs/       343 tests   VCS parsing (Git, SVN, custom format)
-│   ├── rource-core/      539 tests   Scene graph, physics, camera, Barnes-Hut
-│   └── rource-render/    370 tests   Software + WebGL2 + wgpu rendering
+│   ├── rource-core/      1056 tests   Scene graph, physics, camera, Barnes-Hut
+│   └── rource-render/    391 tests   Software + WebGL2 + wgpu rendering
 ├── rource-cli/           358 tests   Native application (winit + softbuffer)
-└── rource-wasm/          461 tests   WebAssembly (browser)
+└── rource-wasm/          493 tests   WebAssembly (browser)
                          ─────────
                          2,900+ total tests
 ```
@@ -509,7 +509,7 @@ rource/
 
 | Document | Description |
 |----------|-------------|
-| [docs/performance/CHRONOLOGY.md](docs/performance/CHRONOLOGY.md) | 87 optimization phases with measurements |
+| [docs/performance/CHRONOLOGY.md](docs/performance/CHRONOLOGY.md) | 88 optimization phases with measurements |
 | [docs/performance/BENCHMARKS.md](docs/performance/BENCHMARKS.md) | Raw benchmark data and methodology |
 | [docs/performance/ALGORITHMIC_COMPLEXITY.md](docs/performance/ALGORITHMIC_COMPLEXITY.md) | Big-O analysis of algorithms |
 | [docs/verification/FORMAL_VERIFICATION.md](docs/verification/FORMAL_VERIFICATION.md) | Formal verification overview and index (2968 theorems/harnesses) |

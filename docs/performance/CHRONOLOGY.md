@@ -1,6 +1,6 @@
 # Optimization Chronology
 
-Complete timeline of all optimization phases (87 phases) with dates, commits, and outcomes.
+Complete timeline of all optimization phases (88 phases) with dates, commits, and outcomes.
 
 ---
 
@@ -103,6 +103,11 @@ Complete timeline of all optimization phases (87 phases) with dates, commits, an
 | 81    | 2026-01-29 | Verification    | CertiCoq-WASM assessment + Vec2 bridge     | Implemented  |
 | 82    | 2026-01-29 | Verification    | Full Coq-to-WASM pipeline (126 Z-theorems) | Implemented  |
 | 83    | 2026-01-29 | Verification    | Requires-axiom decomposition technique (+26 Verus proofs) | Implemented  |
+| 84    | 2026-02-11 | WASM            | Zero-copy stats buffer (WASM↔JS boundary)  | Implemented  |
+| 85    | 2026-02-12 | WASM            | Zero-alloc actions buffer + benchmark correction | Implemented  |
+| 86    | 2026-02-12 | Rendering       | Flat grid + dirty-cell LabelPlacer (2.74x) | Implemented  |
+| 87    | 2026-02-12 | Rendering       | Zero-alloc branch drawing + LOD (4.48x)    | Implemented  |
+| 88    | 2026-02-12 | Feature         | InsightsIndex O(1) per-entity academic metrics | Implemented  |
 
 ---
 
@@ -4098,6 +4103,93 @@ is sub-pixel. Straight lines are pixel-identical for these cases.
 | `rource-cli/src/rendering.rs` | Use `draw_curved_branch_buffered` (CLI parity) |
 | `rource-cli/src/app.rs` | Added `curve_buf: Vec<Vec2>` field to `App` struct |
 | `rource-wasm/src/render_phases/tests/full_frame_bench.rs` | Full-frame benchmark (all 10 render phases) |
+
+---
+
+## Phase 88: InsightsIndex — O(1) Per-Entity Academic Metrics Lookup (2026-02-12)
+
+**Category**: Feature (Academic Research Infrastructure)
+**Status**: Implemented
+**Branch**: `claude/academic-research-implementation-a1MVP`
+
+### Problem
+
+The existing insights engine (`compute_insights()`) computes 20+ academic metrics
+(hotspots, ownership, coupling, lifecycle, profiles, cadence, network, etc.) from
+VCS commit history. However, these metrics were only accessible as separate report
+sections — there was no way to look up all metrics for a specific file or user in
+O(1) time. The WASM frontend needed per-entity access for interactive tooltips,
+detail panels, and academic citation displays.
+
+### Solution
+
+Created `InsightsIndex` aggregation layer that pre-computes per-file and per-user
+metric structs from the complete `InsightsReport`, storing them in `FxHashMap`
+lookup tables built once at load time.
+
+**Core types:**
+
+| Struct | Fields | Academic Citations |
+|--------|--------|--------------------|
+| `FileMetrics` | 15 fields (hotspot_rank, churn_score, ownership_fraction, coupling_degree, lifecycle_stage, commit_count, contributor_count, top_owner, top_owner_share, total_changes, is_knowledge_silo, survival_probability, age_days, bus_factor) | Nagappan & Ball 2005, Bird et al. 2011, Hassan 2009, Cataldo et al. 2006, Lehman 1980 |
+| `UserMetrics` | 12 fields (commit_count, unique_files, focus_score, profile_type, cadence_type, active_days, avg_hour, active_span_days, avg_files_per_commit, network_centrality, knowledge_breadth, circadian_risk) | Mockus et al. 2002, Eyolfson et al. 2011/2014, Posnett et al. 2013, Meneely & Williams 2009 |
+| `IndexSummary` | 6 fields (total_files, total_users, avg_churn, max_coupling_degree, avg_contributors_per_file, knowledge_silo_count) | Aggregate statistics |
+
+**Complexity:**
+
+| Operation | Complexity | Mechanism |
+|-----------|-----------|-----------|
+| Build index | O(F + U + C) | Single pass over report sections |
+| File lookup | O(1) amortized | `FxHashMap` get |
+| User lookup | O(1) amortized | `FxHashMap` get |
+| Memory | ~120 B/file + ~80 B/user | Flat structs, no nested allocations |
+
+### WASM API
+
+5 new `wasm_bindgen` functions exposed through `rource-wasm/src/wasm_api/insights.rs`:
+
+| Function | Returns | Use Case |
+|----------|---------|----------|
+| `getFileMetrics(path)` | JSON object | File detail panel |
+| `getUserMetrics(author)` | JSON object | User detail panel |
+| `getInsightsIndexSummary()` | JSON object | Dashboard overview |
+| `getAllFileMetrics()` | JSON array | Bulk export / table view |
+| `getAllUserMetrics()` | JSON array | Bulk export / table view |
+
+### Regression Check
+
+No hot-path code was modified. The index is built once at log-parse time and
+never accessed during the render loop.
+
+| Benchmark | Baseline (Phase 87) | After Phase 88 | Status |
+|-----------|---------------------|----------------|--------|
+| `bench_full_frame_all_phases` | 3,840 ns | 4,020 ns | OK (within variance) |
+| `bench_beam_sorting` | 112 ns | — | Unchanged |
+| `bench_label_placer_try_place` | 4 ns | — | Unchanged |
+| `bench_estimate_text_width` | 172 ps | — | Unchanged |
+| `bench_stats_buffer_vs_json` | 676.6x | — | Unchanged |
+
+### Test Coverage
+
+| Location | Tests Added | Total |
+|----------|-------------|-------|
+| `crates/rource-core/src/insights/index.rs` | 18 mutation-killing tests | 18 |
+| `rource-wasm/src/wasm_api/insights.rs` | 4 JSON serialization tests | 4 |
+| **Total new tests** | | **22** |
+
+Tests cover: empty input, single commit, nonexistent lookups, hotspot ranking,
+ownership verification, coupling degree, user profiles, summary statistics,
+arithmetic operator mutation killing (division vs multiplication), determinism,
+iterators, Display implementations, and 100-commit scale test.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `crates/rource-core/src/insights/index.rs` | NEW: 1098-line InsightsIndex module |
+| `crates/rource-core/src/insights/mod.rs` | Added `pub mod index;` |
+| `rource-wasm/src/wasm_api/insights.rs` | 5 new wasm_bindgen functions + 3 JSON serializers + 4 tests |
+| `rource-wasm/www/js/wasm-api.js` | 5 new JavaScript wrapper functions |
 
 ---
 

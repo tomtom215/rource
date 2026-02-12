@@ -391,12 +391,15 @@ The following events MUST trigger a CLAUDE.md update:
 | Duplicate glow pass with imperceptible alpha (0.15) | Remove second `draw_spline` call; 0.15 alpha on thin (0.8px) lines is sub-pixel. Halves draw calls for branches |
 | Optimizing WASM but not CLI creates tech debt/drift | ALWAYS update both CLI and WASM together. Same buffer pattern, same function (`draw_curved_branch_buffered`). Prevents code divergence |
 | Full-frame profiling reveals unexpected bottleneck distribution | Build NoOpRenderer (zero GPU cost) benchmark covering ALL render phases. Profile before optimizing; the bottleneck is rarely where you expect |
+| Existing compute engine already has needed metrics | Read codebase first; build aggregation layer (`InsightsIndex::from_report()`) over existing data, don't reimplement |
+| `usize` vs `u32` at module aggregation boundary | Use `as u32` cast at boundary; document theoretical overflow impossibility for domain (git repos) |
+| Benchmark spike after full test suite (CPU thermal) | Run benchmark TWICE after test suite; use second run as reliable measurement; document thermal caveat |
 
 #### Lessons Learned Log
 
 > **Refactored to modular knowledge base**: See [`docs/lessons/README.md`](docs/lessons/README.md)
 > for the index with decision tables, linking to domain-organized files
-> and chronological audit log (295 entries across 4 files).
+> and chronological audit log (303 entries across 4 files).
 >
 > New entries should be added to BOTH the appropriate category file AND the
 > chronological log in that document.
@@ -476,7 +479,7 @@ On a 3.0 GHz CPU (typical test hardware):
 | Metric | Current | Target | Status |
 |--------|---------|--------|--------|
 | Frame time | ~4.23 µs (full frame, 200 files) | <5 µs | **WITHIN TARGET** |
-| Optimization phases | 87 | Ongoing | Active |
+| Optimization phases | 88 | Ongoing | Active |
 | Algorithms evaluated | 79+ | Comprehensive | See ALGORITHM_CANDIDATES.md |
 
 ---
@@ -496,7 +499,7 @@ On a 3.0 GHz CPU (typical test hardware):
 | Precision | Picosecond/nanosecond measurements |
 | Frame Budget | Total render time < 5 µs (target: 2-5 µs) |
 
-**Reference**: `docs/performance/CHRONOLOGY.md` (87 phases)
+**Reference**: `docs/performance/CHRONOLOGY.md` (88 phases)
 
 ---
 
@@ -655,7 +658,7 @@ On a 3.0 GHz CPU (typical test hardware):
 | `docs/REVIEW_STANDARDS.md` | Code review requirements |
 | `STABILITY.md` | API stability policy |
 | `SECURITY.md` | Security policy |
-| `docs/performance/CHRONOLOGY.md` | Optimization history (87 phases) |
+| `docs/performance/CHRONOLOGY.md` | Optimization history (88 phases) |
 | `docs/performance/BENCHMARKS.md` | Raw benchmark data |
 | `docs/performance/NOT_APPLICABLE.md` | Algorithms evaluated as N/A |
 | `docs/performance/ALGORITHM_CANDIDATES.md` | Future optimization candidates |
@@ -788,7 +791,7 @@ rource/
 └── rource-wasm/           # WebAssembly application
 ```
 
-**Test Count**: 2900+ tests total across all crates.
+**Test Count**: 3500+ tests total across all crates.
 
 ### Rendering Backends
 
@@ -842,7 +845,7 @@ Every change MUST follow this workflow:
 │     └─ Add tests for new functionality                                  │
 │                                                                         │
 │  4. VERIFY CORRECTNESS                                                  │
-│     └─ cargo test (all 2900+ tests pass)                               │
+│     └─ cargo test (all 3500+ tests pass)                               │
 │     └─ cargo clippy --all-targets --all-features -- -D warnings (zero)   │
 │     └─ cargo fmt --check (formatted)                                    │
 │     └─ Mobile Safari test (if UI change)                                │
@@ -950,7 +953,7 @@ Every optimization MUST follow this exact process:
 |-----------|-------------|
 | **Measurable** | Backed by criterion benchmarks with statistical significance |
 | **Documented** | Added to ALL THREE docs/performance/ files |
-| **Correct** | All 2900+ tests must pass |
+| **Correct** | All 3500+ tests must pass |
 | **Clean** | Clippy and rustfmt compliant |
 | **Verifiable** | Benchmarks can be re-run to reproduce results |
 | **Mathematical** | Include complexity analysis and/or mathematical proof |
@@ -1282,7 +1285,7 @@ Some code CANNOT be covered by unit tests:
 
 | Test Type | Requirement | Status |
 |-----------|-------------|--------|
-| Unit tests | All public functions | Yes (2964 tests) |
+| Unit tests | All public functions | Yes (3534 tests) |
 | Property tests | Math crate invariants | Yes (Implemented) |
 | Chaos tests | Edge cases, unicode, boundaries | Yes (Implemented) |
 | Benchmarks | Critical paths | Yes (15 benchmark suites) |
@@ -2364,5 +2367,5 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 
 *Last updated: 2026-02-12*
 *Standard: PEER REVIEWED PUBLISHED ACADEMIC (Zero Compromises)*
-*Optimization Phases: 87 (see docs/performance/CHRONOLOGY.md)*
+*Optimization Phases: 88 (see docs/performance/CHRONOLOGY.md)*
 *Formal Verification: 2968 theorems/harnesses (Verus: 498, Coq R-based: 1366, Coq Z-based: 471, Coq FP: 361, Kani: 272)*

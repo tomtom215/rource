@@ -832,6 +832,14 @@ Do NOT report security vulnerabilities via public GitHub issues.
   - 6 equivalent mutants total documented in `.cargo/mutants.toml`
   - Total insights tests: 499 (444 + 48 property + 7 coverage)
   - Total workspace tests: 3486
+- Yes **Session 8: InsightsIndex O(1) per-entity aggregation layer + 22 tests** (2026-02-12)
+  - `InsightsIndex::from_report()`: pre-computes `FileMetrics` (15 fields) and `UserMetrics` (12 fields) from 20 insight modules
+  - O(1) `FxHashMap` lookup for per-file and per-user academic metrics (Nagappan 2005, Bird 2011, Hassan 2009, etc.)
+  - 5 new WASM API functions: `getFileMetrics`, `getUserMetrics`, `getInsightsIndexSummary`, `getAllFileMetrics`, `getAllUserMetrics`
+  - 18 mutation-killing tests (index.rs) + 4 JSON serialization tests (insights.rs)
+  - Benchmark verified: no hot-path regression (4.02 µs vs 3.84 µs baseline, within variance)
+  - Total insights tests: 521 (499 + 22)
+  - Total workspace tests: 3534
 
 **Remaining**:
 - ⏳ Full mutation baseline across all 20 modules (4 sampled, 16 remaining)
@@ -839,7 +847,7 @@ Do NOT report security vulnerabilities via public GitHub issues.
 - ⏳ CI integration for mutation score regression gate
 
 #### Problem Statement
-2900+ tests exist but their effectiveness at catching bugs is unquantified.
+3500+ tests exist but their effectiveness at catching bugs is unquantified.
 Mutation testing reveals "test coverage quality" vs just "test coverage quantity".
 
 #### Success Criteria
