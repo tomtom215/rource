@@ -36,17 +36,22 @@ pub mod change_entropy;
 pub mod circadian;
 pub mod congruence;
 pub mod coupling;
+pub mod defect_prediction;
+pub mod developer_experience;
 pub mod focus;
 pub mod growth;
 pub mod hotspot;
 pub mod index;
 pub mod inequality;
 pub mod knowledge;
+pub mod knowledge_distribution;
 pub mod lifecycle;
 pub mod modularity;
 pub mod network;
 pub mod ownership;
+pub mod ownership_fragmentation;
 pub mod profiles;
+pub mod release_rhythm;
 pub mod survival;
 pub mod temporal;
 pub mod work_type;
@@ -159,6 +164,21 @@ pub struct InsightsReport {
     /// Developer collaboration network centrality (Begel et al. 2023).
     pub network: network::NetworkReport,
 
+    /// Developer experience scores (Mockus & Votta 2000, Eyolfson et al. 2014).
+    pub developer_experience: developer_experience::DeveloperExperienceReport,
+
+    /// Per-file ownership fragmentation / Gini coefficient (Bird et al. 2011).
+    pub ownership_fragmentation: ownership_fragmentation::OwnershipFragmentationReport,
+
+    /// Release rhythm and stability analysis (Khomh et al. 2012).
+    pub release_rhythm: release_rhythm::ReleaseRhythmReport,
+
+    /// Per-directory knowledge distribution entropy (Constantinou & Mens 2017).
+    pub knowledge_distribution: knowledge_distribution::KnowledgeDistributionReport,
+
+    /// Composite defect prediction scores (D'Ambros et al. 2010).
+    pub defect_prediction: defect_prediction::DefectPredictionReport,
+
     /// Summary statistics.
     pub summary: SummaryStats,
 }
@@ -254,6 +274,22 @@ pub fn compute_insights(commits: &[CommitRecord]) -> InsightsReport {
     let survival = accumulators.survival_acc.finalize(t_max);
     let network = network::compute_network(&accumulators.file_authors);
 
+    // Session 4 metrics: new academic research metrics
+    let developer_experience = accumulators.developer_experience_acc.finalize();
+    let ownership_frag =
+        ownership_fragmentation::compute_ownership_fragmentation(&accumulators.file_authors);
+    let release_rhythm = accumulators.release_rhythm_acc.finalize();
+    let knowledge_distribution = accumulators.knowledge_distribution_acc.finalize();
+    // Defect prediction is computed after the index is partially built (needs pre-computed metrics).
+    // We defer it to after from_report in the WASM layer, or compute it here using raw data.
+    // For now, compute a placeholder that will be populated by InsightsIndex::from_report.
+    let defect_prediction = defect_prediction::DefectPredictionReport {
+        files: Vec::new(),
+        avg_defect_score: 0.0,
+        high_risk_count: 0,
+        medium_risk_count: 0,
+    };
+
     let summary = compute_summary(
         commits,
         &ownership,
@@ -286,6 +322,11 @@ pub fn compute_insights(commits: &[CommitRecord]) -> InsightsReport {
         congruence,
         survival,
         network,
+        developer_experience,
+        ownership_fragmentation: ownership_frag,
+        release_rhythm,
+        knowledge_distribution,
+        defect_prediction,
         summary,
     }
 }
@@ -414,6 +455,37 @@ fn empty_report() -> InsightsReport {
             total_edges: 0,
             avg_degree: 0.0,
         },
+        developer_experience: developer_experience::DeveloperExperienceReport {
+            developers: Vec::new(),
+            top_file_familiarities: Vec::new(),
+            avg_experience_score: 0.0,
+        },
+        ownership_fragmentation: ownership_fragmentation::OwnershipFragmentationReport {
+            files: Vec::new(),
+            avg_gini: 0.0,
+            fragmented_count: 0,
+            concentrated_count: 0,
+        },
+        release_rhythm: release_rhythm::ReleaseRhythmReport {
+            windows: Vec::new(),
+            peaks: Vec::new(),
+            avg_release_interval_days: 0.0,
+            release_regularity: 0.0,
+            current_phase: release_rhythm::CyclePhase::Unknown,
+            velocity_trend: release_rhythm::VelocityTrend::Stable,
+        },
+        knowledge_distribution: knowledge_distribution::KnowledgeDistributionReport {
+            directories: Vec::new(),
+            avg_normalized_entropy: 0.0,
+            concentrated_count: 0,
+            distributed_count: 0,
+        },
+        defect_prediction: defect_prediction::DefectPredictionReport {
+            files: Vec::new(),
+            avg_defect_score: 0.0,
+            high_risk_count: 0,
+            medium_risk_count: 0,
+        },
         summary: SummaryStats {
             total_commits: 0,
             total_files: 0,
@@ -445,6 +517,9 @@ struct CommitAccumulators {
     change_burst_acc: change_bursts::ChangeBurstAccumulator,
     focus_acc: focus::FocusAccumulator,
     survival_acc: survival::SurvivalAccumulator,
+    developer_experience_acc: developer_experience::DeveloperExperienceAccumulator,
+    release_rhythm_acc: release_rhythm::ReleaseRhythmAccumulator,
+    knowledge_distribution_acc: knowledge_distribution::KnowledgeDistributionAccumulator,
 }
 
 /// Single pass over commits to populate all accumulators.
@@ -466,6 +541,10 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
     let mut change_burst_acc = change_bursts::ChangeBurstAccumulator::new();
     let mut focus_acc = focus::FocusAccumulator::new();
     let mut survival_acc = survival::SurvivalAccumulator::new();
+    let mut developer_experience_acc = developer_experience::DeveloperExperienceAccumulator::new();
+    let mut release_rhythm_acc = release_rhythm::ReleaseRhythmAccumulator::new();
+    let mut knowledge_distribution_acc =
+        knowledge_distribution::KnowledgeDistributionAccumulator::new();
 
     for commit in commits {
         *unique_authors.entry(commit.author.clone()).or_insert(0) += 1;
@@ -484,6 +563,11 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
         inequality_acc.record_commit(&commit.author, commit.timestamp);
         circadian_acc.record_commit(&commit.author, commit.timestamp, &file_paths);
         focus_acc.record_commit(&commit.author, &file_paths);
+
+        // Session 4 accumulators: new academic metrics
+        developer_experience_acc.record_commit(&commit.author, commit.timestamp, &file_paths);
+        release_rhythm_acc.record_commit(commit.timestamp);
+        knowledge_distribution_acc.record_commit(&commit.author, &file_paths);
 
         for file in &commit.files {
             file_changes
@@ -534,6 +618,9 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
         change_burst_acc,
         focus_acc,
         survival_acc,
+        developer_experience_acc,
+        release_rhythm_acc,
+        knowledge_distribution_acc,
     }
 }
 

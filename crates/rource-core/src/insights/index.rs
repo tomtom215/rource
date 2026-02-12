@@ -122,6 +122,15 @@ pub struct FileMetrics {
     /// Number of files this file co-changes with (coupling degree).
     /// D'Ambros et al. (2009): high coupling indicates hidden dependencies.
     pub coupling_degree: u32,
+
+    /// Per-file Gini coefficient of contributor commit distribution
+    /// (Bird et al. 2011, Greiler et al. 2015). Range: 0.0–1.0.
+    /// 0 = equal ownership, 1 = single owner. Mid-range = fragmented (risky).
+    pub ownership_gini: f64,
+
+    /// Composite defect prediction score (D'Ambros et al. 2010).
+    /// Range: 0.0–1.0 (higher = more defect-prone).
+    pub defect_score: f64,
 }
 
 /// Compact lifecycle stage enum for the index.
@@ -160,6 +169,8 @@ impl Default for FileMetrics {
             is_knowledge_silo: false,
             diffusion_score: 0.0,
             coupling_degree: 0,
+            ownership_gini: 0.0,
+            defect_score: 0.0,
         }
     }
 }
@@ -216,6 +227,13 @@ pub struct UserMetrics {
 
     /// Number of directories this developer works in.
     pub directories_touched: u32,
+
+    /// Developer experience score (Mockus & Votta 2000):
+    /// `tenure_days` × ln(1 + `total_commits`). Higher = more experienced.
+    pub experience_score: f64,
+
+    /// Tenure in days (last commit - first commit).
+    pub tenure_days: f64,
 }
 
 /// Compact contributor classification.
@@ -259,6 +277,8 @@ impl Default for UserMetrics {
             network_betweenness: 0.0,
             circadian_avg_risk: 0.0,
             directories_touched: 0,
+            experience_score: 0.0,
+            tenure_days: 0.0,
         }
     }
 }
@@ -406,6 +426,35 @@ impl InsightsIndex {
             files.entry(cp.file_b.clone()).or_default().coupling_degree += 1;
         }
 
+        // Ownership fragmentation / Gini (Bird et al. 2011)
+        for of in &report.ownership_fragmentation.files {
+            let fm = files.entry(of.path.clone()).or_default();
+            fm.ownership_gini = of.gini_coefficient;
+        }
+
+        // Defect prediction scores (D'Ambros et al. 2010)
+        // Compute from the file metrics we've accumulated so far
+        {
+            let raw: Vec<super::defect_prediction::RawPredictors> = files
+                .iter()
+                .map(|(path, fm)| super::defect_prediction::RawPredictors {
+                    path: path.clone(),
+                    total_changes: fm.total_changes,
+                    age_days: fm.age_days,
+                    contributor_count: fm.contributor_count,
+                    knowledge_entropy: fm.knowledge_entropy,
+                    coupling_degree: fm.coupling_degree,
+                    burst_risk: fm.burst_risk_score,
+                })
+                .collect();
+            let dp_report = super::defect_prediction::compute_defect_predictions(&raw);
+            for dp in &dp_report.files {
+                if let Some(fm) = files.get_mut(&dp.path) {
+                    fm.defect_score = dp.defect_score;
+                }
+            }
+        }
+
         // ---- Phase 2: Populate user metrics from each insight section ----
 
         // Developer profiles (Mockus et al. 2002)
@@ -443,6 +492,13 @@ impl InsightsIndex {
         for a in &report.circadian.authors {
             let um = users.entry(a.author.clone()).or_default();
             um.circadian_avg_risk = a.avg_risk;
+        }
+
+        // Developer experience (Mockus & Votta 2000)
+        for de in &report.developer_experience.developers {
+            let um = users.entry(de.author.clone()).or_default();
+            um.experience_score = de.experience_score;
+            um.tenure_days = de.tenure_days;
         }
 
         // ---- Phase 3: Compute summary statistics ----
