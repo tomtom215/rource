@@ -964,6 +964,7 @@ impl Rource {
             .map(|c| CommitRecord {
                 timestamp: c.timestamp,
                 author: c.author.clone(),
+                message: c.message.clone(),
                 files: c
                     .files
                     .iter()

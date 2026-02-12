@@ -7,14 +7,26 @@
  * Contains commit history data for popular open-source repositories.
  * These logs enable zero-API-call visualization for demo purposes.
  *
- * Generated using: ./scripts/generate-static-logs.sh
- * Last updated: 2026-01-26
+ * Two-tier data system:
+ * 1. Embedded constants (below): Small samples (~24-78 entries) for offline/fallback use
+ * 2. Extended demo data (demo-data/*.log): Real commit history (~5,000 entries each)
+ *    fetched on demand from the demo-data/ directory
+ *
+ * The extended data is included in the GitHub Pages deployment but can be
+ * excluded from self-hosted WASM builds to reduce download size.
+ *
+ * Generated using:
+ * - Embedded: ./scripts/generate-static-logs.sh
+ * - Extended: ./scripts/generate-demo-data.sh
+ *
+ * Last updated: 2026-02-12
  *
  * Benefits:
  * - No GitHub API rate limits
- * - Instant loading (no network latency)
+ * - Instant loading (embedded fallback, no network latency)
+ * - Rich demo experience (extended data, up to 5,000 real file changes per repo)
  * - Deterministic demo experience
- * - Works offline
+ * - Works offline (embedded constants always available)
  */
 
 // ============================================================================
@@ -428,4 +440,60 @@ export function listStaticLogs() {
             metadata: STATIC_LOG_METADATA[key] || {},
         };
     });
+}
+
+// ============================================================================
+// Extended Demo Data (fetch-on-demand from demo-data/ directory)
+// ============================================================================
+
+/** In-memory cache for fetched extended logs. */
+const extendedLogCache = new Map();
+
+/**
+ * Fetches extended demo data for a repository from the demo-data/ directory.
+ * These files contain up to 5,000 real file-change entries from actual
+ * repository commit history, providing a much richer visualization than
+ * the small embedded constants above (~24-78 entries).
+ *
+ * The demo-data/ files are included in the GitHub Pages deployment but can
+ * be excluded from self-hosted WASM builds to reduce file size.
+ *
+ * Falls back to the embedded static log if the extended file is not available.
+ *
+ * @param {string} owner - Repository owner
+ * @param {string} repo - Repository name
+ * @param {number} [timeoutMs=2000] - Fetch timeout in milliseconds
+ * @returns {Promise<string|null>} Extended log data, embedded fallback, or null
+ */
+export async function fetchExtendedLog(owner, repo, timeoutMs = 2000) {
+    const key = `${owner}/${repo}`.toLowerCase();
+    const fileKey = `${owner}-${repo}`.toLowerCase();
+
+    // Check in-memory cache first
+    if (extendedLogCache.has(key)) {
+        return extendedLogCache.get(key);
+    }
+
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+        const response = await fetch(`demo-data/${fileKey}.log`, {
+            signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+            const data = await response.text();
+            if (data && data.trim().length > 0) {
+                extendedLogCache.set(key, data);
+                return data;
+            }
+        }
+    } catch {
+        // Fetch failed (404, timeout, offline) - fall through to embedded
+    }
+
+    // Fallback to embedded static log
+    return STATIC_LOGS[key] || null;
 }

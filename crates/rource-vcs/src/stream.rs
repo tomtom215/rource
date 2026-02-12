@@ -99,6 +99,7 @@ impl<R: Read> GitLogStream<R> {
             timestamp: builder.timestamp,
             author: builder.author,
             email: None,
+            message: None,
             files: builder.files,
         })
     }

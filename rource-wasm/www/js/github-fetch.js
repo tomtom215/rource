@@ -27,7 +27,7 @@ import { CONFIG } from './config.js';
 import { showToast } from './toast.js';
 import { debugLog } from './telemetry.js';
 import { getCachedRepo, setCachedRepo, initCache } from './indexeddb-cache.js';
-import { hasStaticLog, getStaticLog } from './static-logs.js';
+import { hasStaticLog, getStaticLog, fetchExtendedLog } from './static-logs.js';
 
 // ============================================================================
 // Constants
@@ -280,12 +280,13 @@ export function parseGitHubUrl(input) {
 async function getCachedData(owner, repo) {
     const key = `${owner}/${repo}`;
 
-    // First, check if we have a static log (pre-generated, instant)
+    // First, check if we have a static log (pre-generated)
+    // Try extended demo data (richer, ~500 entries) with embedded fallback
     if (hasStaticLog(owner, repo)) {
-        const staticLog = getStaticLog(owner, repo);
-        if (staticLog) {
-            debugLog('github', `Static log hit for ${key}`);
-            return staticLog;
+        const extendedLog = await fetchExtendedLog(owner, repo);
+        if (extendedLog) {
+            debugLog('github', `Static/extended log hit for ${key}`);
+            return extendedLog;
         }
     }
 

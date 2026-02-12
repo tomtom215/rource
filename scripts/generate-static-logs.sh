@@ -2,8 +2,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Tom F <https://github.com/tomtom215>
 #
-# Generates static log files for popular repositories.
+# Generates static log files for popular repositories by cloning from GitHub.
 # These logs are used for zero-API-call demo visualization.
+#
+# NOTE: For synthetic demo data (no GitHub access needed), use instead:
+#   python3 scripts/generate-demo-data.py
+# which generates rource-wasm/www/demo-data/*.log (fetch-on-demand extended data).
 #
 # Usage: ./scripts/generate-static-logs.sh
 #

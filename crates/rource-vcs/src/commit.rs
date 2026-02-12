@@ -161,6 +161,12 @@ pub struct Commit {
     /// The commit author's email (if available).
     pub email: Option<String>,
 
+    /// The commit message text (if available).
+    ///
+    /// Populated by parsers that expose commit messages (e.g., Git).
+    /// Used by the insights engine for commit message entropy analysis.
+    pub message: Option<String>,
+
     /// The list of file changes in this commit.
     pub files: Vec<FileChange>,
 }
@@ -174,6 +180,7 @@ impl Commit {
             timestamp,
             author: author.into(),
             email: None,
+            message: None,
             files: Vec::new(),
         }
     }
@@ -182,6 +189,13 @@ impl Commit {
     #[must_use]
     pub fn with_email(mut self, email: impl Into<String>) -> Self {
         self.email = Some(email.into());
+        self
+    }
+
+    /// Sets the commit message.
+    #[must_use]
+    pub fn with_message(mut self, message: impl Into<String>) -> Self {
+        self.message = Some(message.into());
         self
     }
 

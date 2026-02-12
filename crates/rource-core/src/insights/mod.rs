@@ -31,13 +31,18 @@
 //! on the visualization's frame budget.
 
 pub mod activity_heatmap;
+pub mod architectural_drift;
 pub mod cadence;
 pub mod change_bursts;
 pub mod change_entropy;
+pub mod change_propagation;
 pub mod churn_volatility;
 pub mod circadian;
+pub mod commit_cohesion;
 pub mod commit_complexity;
+pub mod commit_message_entropy;
 pub mod congruence;
+pub mod contextual_complexity;
 pub mod coupling;
 pub mod defect_patterns;
 pub mod defect_prediction;
@@ -49,6 +54,7 @@ pub mod index;
 pub mod inequality;
 pub mod knowledge;
 pub mod knowledge_distribution;
+pub mod knowledge_half_life;
 pub mod lifecycle;
 pub mod modularity;
 pub mod network;
@@ -56,6 +62,7 @@ pub mod ownership;
 pub mod ownership_fragmentation;
 pub mod profiles;
 pub mod release_rhythm;
+pub mod succession_readiness;
 pub mod survival;
 pub mod tech_distribution;
 pub mod tech_expertise;
@@ -99,6 +106,11 @@ pub struct CommitRecord {
     pub timestamp: i64,
     /// Author name.
     pub author: String,
+    /// Commit message text (if available from the VCS parser).
+    ///
+    /// Used by commit message entropy analysis (M4). Parsers that do not
+    /// expose commit messages should set this to `None`.
+    pub message: Option<String>,
     /// File changes in this commit.
     pub files: Vec<FileRecord>,
 }
@@ -211,6 +223,28 @@ pub struct InsightsReport {
     /// Developer technology expertise profiles (Mockus & Herbsleb 2002).
     pub tech_expertise: tech_expertise::TechExpertiseReport,
 
+    // ---- Intelligence tab metrics (Session 7: novel analytical lenses) ----
+    /// Contextual complexity / working set size (Bavota et al. 2013, Denning 1968).
+    pub contextual_complexity: contextual_complexity::ContextualComplexityReport,
+
+    /// Commit cohesion index (Herzig & Zeller 2013, Agrawal et al. 1993).
+    pub commit_cohesion: commit_cohesion::CommitCohesionReport,
+
+    /// Change propagation prediction (Hassan & Holt 2004, Zimmermann et al. 2005).
+    pub change_propagation: change_propagation::ChangePropagationReport,
+
+    /// Commit message entropy / information density (Shannon 1948, Dyer et al. 2013).
+    pub commit_message_entropy: commit_message_entropy::CommitMessageEntropyReport,
+
+    /// Knowledge half-life (Mockus & Votta 2000, Fritz et al. 2010, Ebbinghaus 1885).
+    pub knowledge_half_life: knowledge_half_life::KnowledgeHalfLifeReport,
+
+    /// Architectural drift index (Tzerpos & Holt 2000, Vinh et al. 2010).
+    pub architectural_drift: architectural_drift::ArchitecturalDriftReport,
+
+    /// Developer succession readiness (Ricca et al. 2011, Rigby & Bird 2013).
+    pub succession_readiness: succession_readiness::SuccessionReadinessReport,
+
     /// Summary statistics.
     pub summary: SummaryStats,
 }
@@ -266,6 +300,7 @@ const DEFAULT_TOP_N: usize = 50;
 ///
 /// A complete [`InsightsReport`] with all computed metrics.
 #[must_use]
+#[allow(clippy::too_many_lines)]
 pub fn compute_insights(commits: &[CommitRecord]) -> InsightsReport {
     if commits.is_empty() {
         return empty_report();
@@ -276,6 +311,10 @@ pub fn compute_insights(commits: &[CommitRecord]) -> InsightsReport {
 
     // Single-pass accumulation over all commits
     let accumulators = accumulate_commit_data(commits);
+
+    // Capture file metadata before file_changes is consumed by finalize_hotspots
+    let total_unique_files = accumulators.file_changes.len();
+    let all_file_paths: Vec<String> = accumulators.file_changes.keys().cloned().collect();
 
     // Finalize each metric from accumulated data
     let hotspots = finalize_hotspots(accumulators.file_changes, t_min, t_max);
@@ -338,6 +377,19 @@ pub fn compute_insights(commits: &[CommitRecord]) -> InsightsReport {
     let activity_heatmap = accumulators.activity_heatmap_acc.finalize();
     let tech_expertise = accumulators.tech_expertise_acc.finalize();
 
+    // Intelligence tab metrics (Session 7: novel analytical lenses)
+    let intelligence = compute_intelligence_metrics(
+        &couplings,
+        total_unique_files,
+        &all_file_paths,
+        &hotspots,
+        &accumulators.file_authors,
+        accumulators.commit_cohesion_acc,
+        accumulators.commit_message_entropy_acc,
+        accumulators.knowledge_half_life_acc,
+        t_max,
+    );
+
     let summary = compute_summary(
         commits,
         &ownership,
@@ -383,8 +435,134 @@ pub fn compute_insights(commits: &[CommitRecord]) -> InsightsReport {
         tech_distribution,
         activity_heatmap,
         tech_expertise,
+        contextual_complexity: intelligence.contextual_complexity,
+        commit_cohesion: intelligence.commit_cohesion,
+        change_propagation: intelligence.change_propagation,
+        commit_message_entropy: intelligence.commit_message_entropy,
+        knowledge_half_life: intelligence.knowledge_half_life,
+        architectural_drift: intelligence.architectural_drift,
+        succession_readiness: intelligence.succession_readiness,
         summary,
     }
+}
+
+/// Aggregated results from all Session 7 intelligence tab metrics.
+struct IntelligenceMetrics {
+    contextual_complexity: contextual_complexity::ContextualComplexityReport,
+    commit_cohesion: commit_cohesion::CommitCohesionReport,
+    change_propagation: change_propagation::ChangePropagationReport,
+    commit_message_entropy: commit_message_entropy::CommitMessageEntropyReport,
+    knowledge_half_life: knowledge_half_life::KnowledgeHalfLifeReport,
+    architectural_drift: architectural_drift::ArchitecturalDriftReport,
+    succession_readiness: succession_readiness::SuccessionReadinessReport,
+}
+
+/// Computes all Session 7 intelligence tab metrics from accumulated data.
+#[allow(clippy::too_many_arguments)]
+fn compute_intelligence_metrics(
+    couplings: &[coupling::CouplingPair],
+    total_unique_files: usize,
+    all_file_paths: &[String],
+    hotspots: &[hotspot::FileHotspot],
+    file_authors: &rustc_hash::FxHashMap<String, rustc_hash::FxHashMap<String, u32>>,
+    commit_cohesion_acc: commit_cohesion::CommitCohesionAccumulator,
+    commit_message_entropy_acc: commit_message_entropy::CommitMessageEntropyAccumulator,
+    knowledge_half_life_acc: knowledge_half_life::KnowledgeHalfLifeAccumulator,
+    t_max: i64,
+) -> IntelligenceMetrics {
+    // M1: Contextual complexity
+    let contextual_complexity =
+        contextual_complexity::compute_contextual_complexity(couplings, total_unique_files);
+
+    // M2: Commit cohesion — needs lift lookup map
+    let lift_map: rustc_hash::FxHashMap<(String, String), f64> = couplings
+        .iter()
+        .map(|p| ((p.file_a.clone(), p.file_b.clone()), p.lift))
+        .collect();
+    let commit_cohesion = commit_cohesion_acc.finalize(&lift_map);
+
+    // M3: Change propagation prediction
+    let change_propagation = change_propagation::compute_change_propagation(couplings);
+
+    // M4: Commit message entropy
+    let commit_message_entropy = commit_message_entropy_acc.finalize();
+
+    // M5: Knowledge half-life
+    let knowledge_half_life = knowledge_half_life_acc.finalize(t_max);
+
+    // M6: Architectural drift
+    let architectural_drift =
+        architectural_drift::compute_architectural_drift(couplings, all_file_paths);
+
+    // M7: Succession readiness — depends on M5
+    let succession_readiness =
+        compute_succession_readiness_from_knowledge(&knowledge_half_life, file_authors, hotspots);
+
+    IntelligenceMetrics {
+        contextual_complexity,
+        commit_cohesion,
+        change_propagation,
+        commit_message_entropy,
+        knowledge_half_life,
+        architectural_drift,
+        succession_readiness,
+    }
+}
+
+/// Builds succession readiness inputs from knowledge half-life data and computes the metric.
+fn compute_succession_readiness_from_knowledge(
+    khl: &knowledge_half_life::KnowledgeHalfLifeReport,
+    file_authors: &rustc_hash::FxHashMap<String, rustc_hash::FxHashMap<String, u32>>,
+    hotspots: &[hotspot::FileHotspot],
+) -> succession_readiness::SuccessionReadinessReport {
+    let mut file_knowledge_map: rustc_hash::FxHashMap<
+        String,
+        Vec<succession_readiness::DeveloperFileKnowledge>,
+    > = rustc_hash::FxHashMap::default();
+
+    for file_health in &khl.files {
+        let devs: Vec<succession_readiness::DeveloperFileKnowledge> = file_health
+            .experts
+            .iter()
+            .map(|(author, k)| {
+                let commits = file_authors
+                    .get(&file_health.path)
+                    .and_then(|authors| authors.get(author))
+                    .copied()
+                    .unwrap_or(0);
+                succession_readiness::DeveloperFileKnowledge {
+                    author: author.clone(),
+                    knowledge: *k,
+                    commit_count: commits,
+                }
+            })
+            .collect();
+        file_knowledge_map.insert(file_health.path.clone(), devs);
+    }
+
+    // Build per-developer directory sets for Jaccard similarity
+    let mut dev_dirs: rustc_hash::FxHashMap<String, rustc_hash::FxHashSet<String>> =
+        rustc_hash::FxHashMap::default();
+    for (path, authors) in file_authors {
+        let dir = path
+            .rsplit_once('/')
+            .map_or_else(|| ".".to_string(), |(d, _)| d.to_string());
+        for author in authors.keys() {
+            dev_dirs
+                .entry(author.clone())
+                .or_default()
+                .insert(dir.clone());
+        }
+    }
+
+    let file_hotspot_scores: rustc_hash::FxHashMap<String, f64> =
+        hotspots.iter().map(|h| (h.path.clone(), h.score)).collect();
+
+    succession_readiness::compute_succession_readiness(
+        &file_knowledge_map,
+        &dev_dirs,
+        &file_hotspot_scores,
+    )
 }
 
 /// Returns an empty report for repositories with no commits.
@@ -598,6 +776,60 @@ fn empty_report() -> InsightsReport {
             developer_count: 0,
             dominant_tech: String::new(),
         },
+        contextual_complexity: contextual_complexity::ContextualComplexityReport {
+            files: Vec::new(),
+            avg_context_size: 0.0,
+            threshold: 0.0,
+            files_with_context: 0,
+            max_context_size: 0,
+        },
+        commit_cohesion: commit_cohesion::CommitCohesionReport {
+            commits: Vec::new(),
+            median_cohesion: 1.0,
+            tangled_ratio: 0.0,
+            developer_cohesion: Vec::new(),
+            total_analyzed: 0,
+        },
+        change_propagation: change_propagation::ChangePropagationReport {
+            files: Vec::new(),
+            avg_risk_score: 0.0,
+            avg_expected_depth: 0.0,
+            cascade_count: 0,
+        },
+        commit_message_entropy: commit_message_entropy::CommitMessageEntropyReport {
+            commits: Vec::new(),
+            median_info_density: 0.0,
+            low_info_ratio: 0.0,
+            avg_cross_entropy: 0.0,
+            developer_quality: Vec::new(),
+            total_analyzed: 0,
+            no_message_count: 0,
+        },
+        knowledge_half_life: knowledge_half_life::KnowledgeHalfLifeReport {
+            files: Vec::new(),
+            team_knowledge_freshness: 0.0,
+            cliff_count: 0,
+            developers: Vec::new(),
+            median_half_life_days: 0.0,
+            min_half_life_days: 0.0,
+            max_half_life_days: 0.0,
+        },
+        architectural_drift: architectural_drift::ArchitecturalDriftReport {
+            drift_index: 0.0,
+            nmi: 1.0,
+            files: Vec::new(),
+            directories: Vec::new(),
+            ghost_modules: Vec::new(),
+            cluster_count: 0,
+            misplaced_count: 0,
+        },
+        succession_readiness: succession_readiness::SuccessionReadinessReport {
+            files: Vec::new(),
+            codebase_readiness: 0.0,
+            single_point_of_failure_count: 0,
+            adequate_succession_count: 0,
+            total_files: 0,
+        },
         summary: SummaryStats {
             total_commits: 0,
             total_files: 0,
@@ -640,6 +872,10 @@ struct CommitAccumulators {
     tech_distribution_acc: tech_distribution::TechDistributionAccumulator,
     activity_heatmap_acc: activity_heatmap::ActivityHeatmapAccumulator,
     tech_expertise_acc: tech_expertise::TechExpertiseAccumulator,
+    // Intelligence tab accumulators
+    commit_cohesion_acc: commit_cohesion::CommitCohesionAccumulator,
+    commit_message_entropy_acc: commit_message_entropy::CommitMessageEntropyAccumulator,
+    knowledge_half_life_acc: knowledge_half_life::KnowledgeHalfLifeAccumulator,
 }
 
 /// Single pass over commits to populate all accumulators.
@@ -674,6 +910,11 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
     let mut tech_distribution_acc = tech_distribution::TechDistributionAccumulator::new();
     let mut activity_heatmap_acc = activity_heatmap::ActivityHeatmapAccumulator::new();
     let mut tech_expertise_acc = tech_expertise::TechExpertiseAccumulator::new();
+    // Intelligence tab accumulators
+    let mut commit_cohesion_acc = commit_cohesion::CommitCohesionAccumulator::new();
+    let mut commit_message_entropy_acc =
+        commit_message_entropy::CommitMessageEntropyAccumulator::new();
+    let mut knowledge_half_life_acc = knowledge_half_life::KnowledgeHalfLifeAccumulator::new();
 
     for commit in commits {
         *unique_authors.entry(commit.author.clone()).or_insert(0) += 1;
@@ -714,6 +955,15 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
         }
         defect_patterns_acc.record_commit(&commit.author, commit.timestamp, &file_paths);
 
+        // Intelligence tab accumulators: per-commit data
+        commit_cohesion_acc.record_commit(&commit.author, commit.timestamp, &file_paths);
+        commit_message_entropy_acc.record_commit(
+            &commit.author,
+            commit.timestamp,
+            commit.message.as_deref(),
+            commit.files.len(),
+        );
+
         // Session 5b accumulators: repository overview metrics
         activity_heatmap_acc.record_commit(commit.timestamp);
         {
@@ -744,6 +994,9 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
             // Session 3 accumulators: per-file data
             change_entropy_acc.record_file(&file.path, file.action, commit.timestamp);
             change_burst_acc.record_file(&file.path, commit.timestamp, &commit.author);
+
+            // Intelligence tab: per-file knowledge tracking
+            knowledge_half_life_acc.record_file(&commit.author, &file.path, commit.timestamp);
 
             // Session 5 accumulators: per-file data
             churn_volatility_acc.record_file(&file.path, file.action, commit.timestamp);
@@ -793,6 +1046,9 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
         tech_distribution_acc,
         activity_heatmap_acc,
         tech_expertise_acc,
+        commit_cohesion_acc,
+        commit_message_entropy_acc,
+        knowledge_half_life_acc,
     }
 }
 
@@ -906,6 +1162,7 @@ mod tests {
         CommitRecord {
             timestamp: ts,
             author: author.to_string(),
+            message: None,
             files: files
                 .iter()
                 .map(|(p, a)| FileRecord {

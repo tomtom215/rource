@@ -231,6 +231,7 @@ impl Parser for GitParser {
         let mut current_email: Option<String> = None;
         let mut current_timestamp: i64 = 0;
         let mut current_files: Vec<FileChange> = Vec::new();
+        let mut current_message: Vec<String> = Vec::new();
 
         let mut line_number = 0;
 
@@ -238,12 +239,7 @@ impl Parser for GitParser {
             line_number += 1;
             let line = line.trim();
 
-            // Skip empty lines in certain states
             if line.is_empty() {
-                if state == ParserState::ReadingFiles {
-                    // Empty line might separate commits, continue reading
-                    continue;
-                }
                 continue;
             }
 
@@ -253,7 +249,6 @@ impl Parser for GitParser {
                         current_hash = line[7..].trim().to_string();
                         state = ParserState::ExpectingAuthor;
                     }
-                    // Otherwise skip lines until we see a commit
                 }
 
                 ParserState::ExpectingAuthor => {
@@ -263,10 +258,8 @@ impl Parser for GitParser {
                         current_email = email;
                         state = ParserState::ExpectingDate;
                     } else if let Some(hash) = line.strip_prefix("commit ") {
-                        // New commit without author? Reset
                         current_hash = hash.trim().to_string();
                     }
-                    // Skip other lines (like Merge: lines)
                 }
 
                 ParserState::ExpectingDate => {
@@ -274,70 +267,59 @@ impl Parser for GitParser {
                         current_timestamp = Self::parse_date_line(line, line_number)?;
                         state = ParserState::ReadingFiles;
                     } else if let Some(hash) = line.strip_prefix("commit ") {
-                        // New commit without date? Reset
                         current_hash = hash.trim().to_string();
                         state = ParserState::ExpectingAuthor;
                     }
-                    // Skip other lines
                 }
 
                 ParserState::ReadingFiles => {
                     if line.starts_with("commit ") || line.starts_with("Commit ") {
-                        // Save current commit if it has files
-                        if !current_files.is_empty() || !self.options.skip_empty_commits {
-                            if self.options.timestamp_in_range(current_timestamp) {
-                                let mut commit = Commit::new(
-                                    current_hash.clone(),
-                                    current_timestamp,
-                                    current_author.clone(),
-                                );
-                                if let Some(ref email) = current_email {
-                                    commit = commit.with_email(email.clone());
-                                }
-                                // Use drain to reuse Vec capacity for next commit
-                                #[allow(clippy::iter_with_drain)]
-                                let files = current_files.drain(..);
-                                commit = commit.with_files(files);
-                                commits.push(commit);
-
-                                if self.options.limit_reached(commits.len()) {
-                                    return Ok(commits);
-                                }
-                            } else {
-                                current_files.clear();
+                        if let Some(c) = build_commit(
+                            &self.options,
+                            &current_hash,
+                            current_timestamp,
+                            &current_author,
+                            current_email.as_ref(),
+                            &current_message,
+                            &mut current_files,
+                        ) {
+                            commits.push(c);
+                            if self.options.limit_reached(commits.len()) {
+                                return Ok(commits);
                             }
                         }
-
-                        // Start new commit
                         current_hash = line[7..].trim().to_string();
                         current_files.clear();
+                        current_message.clear();
                         state = ParserState::ExpectingAuthor;
                     } else if let Some(file_change) = Self::parse_file_status(line, line_number)? {
                         current_files.push(file_change);
+                    } else {
+                        current_message.push(line.to_string());
                     }
-                    // Skip commit message lines and other content
                 }
             }
         }
 
         // Don't forget the last commit
-        if state == ParserState::ReadingFiles
-            && (!current_files.is_empty() || !self.options.skip_empty_commits)
-            && self.options.timestamp_in_range(current_timestamp)
-        {
-            let mut commit = Commit::new(current_hash, current_timestamp, current_author);
-            if let Some(email) = current_email {
-                commit = commit.with_email(email);
+        if state == ParserState::ReadingFiles {
+            if let Some(c) = build_commit(
+                &self.options,
+                &current_hash,
+                current_timestamp,
+                &current_author,
+                current_email.as_ref(),
+                &current_message,
+                &mut current_files,
+            ) {
+                commits.push(c);
             }
-            commit = commit.with_files(current_files);
-            commits.push(commit);
         }
 
         if commits.is_empty() {
             return Err(ParseError::EmptyLog);
         }
 
-        // Sort by timestamp
         commits.sort_by_key(|c| c.timestamp);
 
         Ok(commits)
@@ -357,6 +339,41 @@ impl Parser for GitParser {
         }
         false
     }
+}
+
+/// Builds a `Commit` from accumulated parser state, applying filters.
+///
+/// Returns `None` if the commit should be skipped (out of time range or empty).
+fn build_commit(
+    options: &ParseOptions,
+    hash: &str,
+    timestamp: i64,
+    author: &str,
+    email: Option<&String>,
+    message_lines: &[String],
+    files: &mut Vec<FileChange>,
+) -> Option<Commit> {
+    if !options.timestamp_in_range(timestamp) {
+        return None;
+    }
+    if options.skip_empty_commits && files.is_empty() {
+        return None;
+    }
+    let message_text = message_lines
+        .iter()
+        .map(String::as_str)
+        .collect::<Vec<_>>()
+        .join("\n");
+    let message_text = message_text.trim();
+
+    let mut commit = Commit::new(hash, timestamp, author).with_files(files.drain(..));
+    if let Some(e) = email {
+        commit = commit.with_email(e.clone());
+    }
+    if !message_text.is_empty() {
+        commit = commit.with_message(message_text);
+    }
+    Some(commit)
 }
 
 #[cfg(test)]

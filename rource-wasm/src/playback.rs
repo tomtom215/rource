@@ -422,6 +422,7 @@ mod tests {
             author: "Test".to_string(),
             email: None,
             timestamp: 1000,
+            message: None,
             files: vec![],
         }];
         let range = get_date_range(&commits);
@@ -436,6 +437,7 @@ mod tests {
                 author: "Test".to_string(),
                 email: None,
                 timestamp: 1000,
+                message: None,
                 files: vec![],
             },
             Commit {
@@ -443,6 +445,7 @@ mod tests {
                 author: "Test".to_string(),
                 email: None,
                 timestamp: 2000,
+                message: None,
                 files: vec![],
             },
             Commit {
@@ -450,6 +453,7 @@ mod tests {
                 author: "Test".to_string(),
                 email: None,
                 timestamp: 3000,
+                message: None,
                 files: vec![],
             },
         ];
@@ -471,6 +475,7 @@ mod tests {
             author: "Alice".to_string(),
             email: None,
             timestamp: 1000,
+            message: None,
             files: vec![
                 FileChange {
                     path: PathBuf::from("src/main.rs"),
@@ -500,6 +505,7 @@ mod tests {
             author: "Alice".to_string(),
             email: None,
             timestamp: 1000,
+            message: None,
             files: vec![FileChange {
                 path: PathBuf::from("src/main.rs"),
                 action: FileAction::Create,
@@ -514,6 +520,7 @@ mod tests {
             author: "Bob".to_string(),
             email: None,
             timestamp: 2000,
+            message: None,
             files: vec![FileChange {
                 path: PathBuf::from("src/main.rs"),
                 action: FileAction::Modify,
@@ -533,6 +540,7 @@ mod tests {
             author: "Alice".to_string(),
             email: None,
             timestamp: 1000,
+            message: None,
             files: vec![],
         };
 
@@ -552,6 +560,7 @@ mod tests {
             author: "Alice".to_string(),
             email: None,
             timestamp: 1000,
+            message: None,
             files: vec![FileChange {
                 path: PathBuf::from("src/main.rs"),
                 action: FileAction::Create,
@@ -564,6 +573,7 @@ mod tests {
             author: "Bob".to_string(),
             email: None,
             timestamp: 2000,
+            message: None,
             files: vec![FileChange {
                 path: PathBuf::from("src/lib.rs"),
                 action: FileAction::Create,
@@ -587,6 +597,7 @@ mod tests {
             author: "Alice".to_string(),
             email: None,
             timestamp: 1000,
+            message: None,
             files: vec![FileChange {
                 path: PathBuf::from("src/main.rs"),
                 action: FileAction::Create,
@@ -611,6 +622,7 @@ mod tests {
             author: "Alice".to_string(),
             email: None,
             timestamp: 1000,
+            message: None,
             files: vec![FileChange {
                 path: PathBuf::from("src/main.rs"),
                 action: FileAction::Create,
@@ -732,6 +744,7 @@ mod tests {
                 author: "Test".to_string(),
                 email: None,
                 timestamp: 3000,
+                message: None,
                 files: vec![],
             },
             Commit {
@@ -739,6 +752,7 @@ mod tests {
                 author: "Test".to_string(),
                 email: None,
                 timestamp: 1000,
+                message: None,
                 files: vec![],
             },
         ];
@@ -756,6 +770,7 @@ mod tests {
                 author: "Test".to_string(),
                 email: None,
                 timestamp: -86400,
+                message: None,
                 files: vec![],
             },
             Commit {
@@ -763,6 +778,7 @@ mod tests {
                 author: "Test".to_string(),
                 email: None,
                 timestamp: 0,
+                message: None,
                 files: vec![],
             },
         ];
@@ -780,6 +796,7 @@ mod tests {
             author: "Alice".to_string(),
             email: None,
             timestamp: 1000,
+            message: None,
             files: vec![FileChange {
                 path: PathBuf::from("src/main.rs"),
                 action: FileAction::Create,
@@ -804,6 +821,7 @@ mod tests {
             author: "Alice".to_string(),
             email: None,
             timestamp: 1000,
+            message: None,
             files: vec![FileChange {
                 path: PathBuf::from("src/main.rs"),
                 action: FileAction::Create,

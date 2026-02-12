@@ -405,6 +405,34 @@ export class Rource {
         }
     }
     /**
+     * Returns architectural drift index analysis as JSON.
+     *
+     * Measures divergence between directory structure and co-change clusters
+     * using Normalized Mutual Information (NMI).
+     *
+     * # Academic Citations
+     * - Garcia et al. (WICSA 2009): drift detection
+     * - Maqbool & Babri (JSS 2007): hierarchical clustering comparison
+     * - Raghavan et al. (Phys Rev 2007): label propagation
+     * @returns {string | undefined}
+     */
+    getArchitecturalDrift() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getArchitecturalDrift(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
      * Returns the error count for asset loading operations.
      *
      * Asset errors occur when loading images, fonts, or other resources.
@@ -667,6 +695,33 @@ export class Rource {
         }
     }
     /**
+     * Returns change propagation prediction as JSON.
+     *
+     * Predicts which files need concurrent modification based on
+     * historical co-change patterns and transitive cascade analysis.
+     *
+     * # Academic Citations
+     * - Ying et al. (MSR 2004): change propagation
+     * - Hassan & Holt (ICSM 2004): predictive change coupling
+     * @returns {string | undefined}
+     */
+    getChangePropagation() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getChangePropagation(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
      * Returns code churn volatility per file (Nagappan & Ball 2005).
      * @returns {string | undefined}
      */
@@ -778,6 +833,32 @@ export class Rource {
         }
     }
     /**
+     * Returns commit cohesion index analysis as JSON.
+     *
+     * Measures whether commits are atomic (tightly related changes) or tangled.
+     *
+     * # Academic Citations
+     * - Herzig & Zeller (ICSE 2013): tangled commits
+     * - Kirinuki et al. (SANER 2014): untangling changes
+     * @returns {string | undefined}
+     */
+    getCommitCohesion() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getCommitCohesion(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
      * Returns per-commit complexity / tangled change scores (Herzig & Zeller 2013).
      * @returns {string | undefined}
      */
@@ -825,6 +906,33 @@ export class Rource {
         return ret >>> 0;
     }
     /**
+     * Returns commit message entropy analysis as JSON.
+     *
+     * Measures the information density and quality of commit messages
+     * using Shannon entropy and cross-entropy.
+     *
+     * # Academic Citations
+     * - Dyer et al. (MSR 2013): commit message mining
+     * - Hindle et al. (ICSE 2012): naturalness of code
+     * @returns {string | undefined}
+     */
+    getCommitMessageEntropy() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getCommitMessageEntropy(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
      * Returns the timestamp for a commit at the given index.
      * @param {number} index
      * @returns {number}
@@ -855,6 +963,34 @@ export class Rource {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
             wasm.rource_getCongruence(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns contextual complexity (working set size) analysis as JSON.
+     *
+     * For each file, computes the number of other files a developer must
+     * simultaneously understand to safely modify it.
+     *
+     * # Academic Citations
+     * - Bavota et al. (ICSM 2013): structural-semantic coupling
+     * - Gall et al. (ICSE 1998): logical coupling from co-changes
+     * - Denning (CACM 1968): working set model
+     * @returns {string | undefined}
+     */
+    getContextualComplexity() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getContextualComplexity(retptr, this.__wbg_ptr);
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             let v1;
@@ -1309,8 +1445,8 @@ export class Rource {
     /**
      * Returns aggregated academic metrics for a specific file as JSON.
      *
-     * Computes the full insights index and performs O(1) lookup by file path.
-     * Returns `null` if the file is not found in the commit history.
+     * Performs O(1) lookup from the cached insights index (computed at load time).
+     * Returns `null` if no commits are loaded or the file is not found.
      *
      * # Academic Citations
      *
@@ -1610,9 +1746,9 @@ export class Rource {
         }
     }
     /**
-     * Computes and returns comprehensive repository insights as JSON.
+     * Returns comprehensive repository insights as JSON from the cached report.
      *
-     * Analyzes the loaded commit history to produce research-backed metrics:
+     * Includes research-backed metrics:
      *
      * - **Hotspots**: Files with high change frequency (defect predictors)
      * - **Change Coupling**: Hidden dependencies via co-change patterns
@@ -1626,8 +1762,7 @@ export class Rource {
      *
      * # Performance
      *
-     * Computed from commit history at call time (not per-frame).
-     * Typical computation time: <10ms for 10k commits.
+     * Report is cached at load time (Phase 89). This method only serializes.
      * @returns {string | undefined}
      */
     getInsights() {
@@ -1714,6 +1849,33 @@ export class Rource {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
             wasm.rource_getKnowledgeDistribution(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns knowledge half-life analysis as JSON.
+     *
+     * Models exponential knowledge decay with per-file adaptive decay rates.
+     *
+     * # Academic Citations
+     * - Fritz et al. (ICSE 2010): degree-of-knowledge model
+     * - Robillard et al. (IEEE Software 2014): developer memory
+     * - Ebbinghaus (1885): forgetting curve
+     * @returns {string | undefined}
+     */
+    getKnowledgeHalfLife() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getKnowledgeHalfLife(retptr, this.__wbg_ptr);
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             let v1;
@@ -1990,6 +2152,33 @@ export class Rource {
         return ret >>> 0;
     }
     /**
+     * Returns succession readiness analysis as JSON.
+     *
+     * For each file, scores how prepared the team is for the primary
+     * contributor to become unavailable.
+     *
+     * # Academic Citations
+     * - Ricca et al. (JSS 2011): developer succession
+     * - Rigby & Bird (FSE 2013): knowledge distribution
+     * @returns {string | undefined}
+     */
+    getSuccessionReadiness() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getSuccessionReadiness(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
      * Returns language/technology distribution by file extension.
      * @returns {string | undefined}
      */
@@ -2175,8 +2364,8 @@ export class Rource {
     /**
      * Returns aggregated academic metrics for a specific developer as JSON.
      *
-     * Computes the full insights index and performs O(1) lookup by author name.
-     * Returns `null` if the author is not found in the commit history.
+     * Performs O(1) lookup from the cached insights index (computed at load time).
+     * Returns `null` if no commits are loaded or the author is not found.
      *
      * # Academic Citations
      *
@@ -4510,7 +4699,7 @@ function __wbg_get_imports() {
                     const a = state0.a;
                     state0.a = 0;
                     try {
-                        return __wasm_bindgen_func_elem_7947(a, state0.b, arg0, arg1);
+                        return __wasm_bindgen_func_elem_8091(a, state0.b, arg0, arg1);
                     } finally {
                         state0.a = a;
                     }
@@ -5499,8 +5688,8 @@ function __wbg_get_imports() {
             getObject(arg0).writeTexture(getObject(arg1), getObject(arg2), getObject(arg3), getObject(arg4));
         }, arguments); },
         __wbindgen_cast_0000000000000001: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { dtor_idx: 801, function: Function { arguments: [Externref], shim_idx: 802, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, wasm.__wasm_bindgen_func_elem_3199, __wasm_bindgen_func_elem_3200);
+            // Cast intrinsic for `Closure(Closure { dtor_idx: 810, function: Function { arguments: [Externref], shim_idx: 811, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            const ret = makeMutClosure(arg0, arg1, wasm.__wasm_bindgen_func_elem_3346, __wasm_bindgen_func_elem_3347);
             return addHeapObject(ret);
         },
         __wbindgen_cast_0000000000000002: function(arg0) {
@@ -5562,12 +5751,12 @@ function __wbg_get_imports() {
     };
 }
 
-function __wasm_bindgen_func_elem_3200(arg0, arg1, arg2) {
-    wasm.__wasm_bindgen_func_elem_3200(arg0, arg1, addHeapObject(arg2));
+function __wasm_bindgen_func_elem_3347(arg0, arg1, arg2) {
+    wasm.__wasm_bindgen_func_elem_3347(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wasm_bindgen_func_elem_7947(arg0, arg1, arg2, arg3) {
-    wasm.__wasm_bindgen_func_elem_7947(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
+function __wasm_bindgen_func_elem_8091(arg0, arg1, arg2, arg3) {
+    wasm.__wasm_bindgen_func_elem_8091(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
 

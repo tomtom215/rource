@@ -50,6 +50,7 @@ tests/visual/.chrome-data/
 *.bbl
 *.blg
 *.log
+!rource-wasm/www/demo-data/*.log
 *.out
 *.fls
 *.fdb_latexmk

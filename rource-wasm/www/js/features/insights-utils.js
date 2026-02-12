@@ -248,6 +248,35 @@ const TOOLTIP = {
         plain: 'Files that always change together in the same commit, even without direct code dependencies. These hidden dependencies make the codebase harder to maintain.',
         math: '<code>support = co_change_count</code>. <code>confidence = support / changes_A</code>. <code>lift = support \u00d7 N / (changes_A \u00d7 changes_B)</code>. Lift &gt; 1 = positive association (Agrawal et al. 1993 association rules). Source: <code>insights/coupling.rs</code>'
     },
+    // Intelligence tab metrics (M1-M7)
+    'Contextual Complexity': {
+        plain: 'How many other files must a developer keep in their head to safely modify this one? The bigger the context, the harder the change and the more likely a mistake.',
+        math: '<code>P(g|f) = co_changes(f,g) / changes(f)</code>. Context set = files where <code>P(g|f) &gt; P75</code> (self-calibrating threshold). <code>CC(f) = |context(f)|</code>. <code>WCC(f) = \u03a3 P(g|f)</code> for context files. Based on Denning\u2019s working set model (CACM 1968) applied to developer cognition. Source: <code>insights/contextual_complexity.rs</code>'
+    },
+    'Commit Cohesion': {
+        plain: 'Are your commits tightly focused on one change, or do they mix unrelated modifications? Tangled commits make code review harder and bugs easier to introduce.',
+        math: '<code>cohesion(c) = 1 - avg_pair_distance(files)</code> where pair distance = 1 - (shared path prefix / max depth). Tangled if <code>cohesion &lt; P25</code>. <code>median_cohesion</code> across all commits. Based on Herzig & Zeller (ICSE 2013) untangling methodology. Source: <code>insights/commit_cohesion.rs</code>'
+    },
+    'Change Propagation': {
+        plain: 'When you change file A, which other files will you probably need to change too? This predicts the ripple effect of your modifications up to 3 levels deep.',
+        math: '<code>P(g|f) = co_changes(f,g) / changes(f)</code>. Depth 1: direct neighbors. Depth 2: <code>\u03a3 P(g|f)\u00d7P(h|g)</code>. Depth 3: sparse transitive closure. <code>PRS(f) = \u03a3 P(top-K)</code>. Based on Hassan & Holt (ICSM 2004) change propagation. Source: <code>insights/change_propagation.rs</code>'
+    },
+    'Commit Message Quality': {
+        plain: 'Measures whether commit messages actually describe the change or are just noise like "fix" or "update". Good messages are essential for code archaeology.',
+        math: 'Token entropy: <code>H = -\u03a3(p\u1d62 \u00d7 log\u2082(p\u1d62))</code>. Info density: <code>unique_tokens / total_tokens</code>. Cross-entropy against corpus unigram model. Low-info threshold: density &lt; 0.3 AND entropy &lt; 2.0. Based on Dyer et al. (MSR 2013). Source: <code>insights/commit_message_entropy.rs</code>'
+    },
+    'Knowledge Half-Life': {
+        plain: 'Knowledge of code fades over time like a memory. This measures how long before a developer\u2019s understanding of each file decays to half, and who still has fresh knowledge.',
+        math: '<code>K(d,f,t) = \u03a3 e^(-\u03bb_f \u00d7 (t-t_i))</code>. Decay rate: <code>\u03bb_f = ln(2) / h_f</code> where <code>h_f = median_gap_days</code>. Freshness: <code>max K / team_size</code>. Cliff: only 1 expert above 0.5. Based on Fritz et al. (ICSE 2010) and Ebbinghaus forgetting curve. Source: <code>insights/knowledge_half_life.rs</code>'
+    },
+    'Architectural Drift': {
+        plain: 'Does your directory structure still reflect how files actually relate to each other? Drift means the architecture on disk has diverged from the architecture in practice.',
+        math: 'Label propagation clustering on co-change graph (Raghavan et al. 2007). <code>NMI = I(dirs;clusters) / sqrt(H(dirs)\u00d7H(clusters))</code>. Drift index: <code>1 - NMI</code>. Ghost modules = clusters spanning multiple directories. Source: <code>insights/architectural_drift.rs</code>'
+    },
+    'Succession Readiness': {
+        plain: 'If the main contributor to a file leaves, is there someone ready to take over? A score of 0 means no viable successor \u2014 a single point of failure.',
+        math: '<code>SR(f) = max(recency \u00d7 depth \u00d7 similarity)</code> across candidates. Recency: <code>K(d)/K(primary)</code>. Depth: <code>commits(d)/commits(primary)</code>. Similarity: Jaccard over directories. Based on Ricca et al. (JSS 2011). Source: <code>insights/succession_readiness.rs</code>'
+    },
 };
 
 /**

@@ -33,6 +33,7 @@ fn convert_commits(commits: &[rource_vcs::Commit]) -> Vec<CommitRecord> {
         .map(|c| CommitRecord {
             timestamp: c.timestamp,
             author: c.author.clone(),
+            message: c.message.clone(),
             files: c
                 .files
                 .iter()
@@ -123,6 +124,14 @@ fn format_insights_json(report: &InsightsReport) -> String {
     write_tech_distribution_json(&mut json, report);
     write_activity_heatmap_json(&mut json, report);
     write_tech_expertise_json(&mut json, report);
+    // Intelligence tab metrics (Session 7)
+    write_contextual_complexity_json(&mut json, report);
+    write_commit_cohesion_json(&mut json, report);
+    write_change_propagation_json(&mut json, report);
+    write_commit_message_entropy_json(&mut json, report);
+    write_knowledge_half_life_json(&mut json, report);
+    write_architectural_drift_json(&mut json, report);
+    write_succession_readiness_json(&mut json, report);
     json.push('}');
     json
 }
@@ -1330,6 +1339,137 @@ impl Rource {
         json.push('}');
         Some(json)
     }
+
+    // ========================================================================
+    // Intelligence tab metrics (Session 7: novel analytical lenses)
+    // ========================================================================
+
+    /// Returns contextual complexity (working set size) analysis as JSON.
+    ///
+    /// For each file, computes the number of other files a developer must
+    /// simultaneously understand to safely modify it.
+    ///
+    /// # Academic Citations
+    /// - Bavota et al. (ICSM 2013): structural-semantic coupling
+    /// - Gall et al. (ICSE 1998): logical coupling from co-changes
+    /// - Denning (CACM 1968): working set model
+    #[wasm_bindgen(js_name = getContextualComplexity)]
+    pub fn get_contextual_complexity(&self) -> Option<String> {
+        let report = self.cached_report.as_ref()?;
+        let mut json = String::with_capacity(2048);
+        json.push('{');
+        write_contextual_complexity_json_standalone(&mut json, report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns commit cohesion index analysis as JSON.
+    ///
+    /// Measures whether commits are atomic (tightly related changes) or tangled.
+    ///
+    /// # Academic Citations
+    /// - Herzig & Zeller (ICSE 2013): tangled commits
+    /// - Kirinuki et al. (SANER 2014): untangling changes
+    #[wasm_bindgen(js_name = getCommitCohesion)]
+    pub fn get_commit_cohesion(&self) -> Option<String> {
+        let report = self.cached_report.as_ref()?;
+        let mut json = String::with_capacity(2048);
+        json.push('{');
+        write_commit_cohesion_json_standalone(&mut json, report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns change propagation prediction as JSON.
+    ///
+    /// Predicts which files need concurrent modification based on
+    /// historical co-change patterns and transitive cascade analysis.
+    ///
+    /// # Academic Citations
+    /// - Ying et al. (MSR 2004): change propagation
+    /// - Hassan & Holt (ICSM 2004): predictive change coupling
+    #[wasm_bindgen(js_name = getChangePropagation)]
+    pub fn get_change_propagation(&self) -> Option<String> {
+        let report = self.cached_report.as_ref()?;
+        let mut json = String::with_capacity(2048);
+        json.push('{');
+        write_change_propagation_json_standalone(&mut json, report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns commit message entropy analysis as JSON.
+    ///
+    /// Measures the information density and quality of commit messages
+    /// using Shannon entropy and cross-entropy.
+    ///
+    /// # Academic Citations
+    /// - Dyer et al. (MSR 2013): commit message mining
+    /// - Hindle et al. (ICSE 2012): naturalness of code
+    #[wasm_bindgen(js_name = getCommitMessageEntropy)]
+    pub fn get_commit_message_entropy(&self) -> Option<String> {
+        let report = self.cached_report.as_ref()?;
+        let mut json = String::with_capacity(2048);
+        json.push('{');
+        write_commit_message_entropy_json_standalone(&mut json, report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns knowledge half-life analysis as JSON.
+    ///
+    /// Models exponential knowledge decay with per-file adaptive decay rates.
+    ///
+    /// # Academic Citations
+    /// - Fritz et al. (ICSE 2010): degree-of-knowledge model
+    /// - Robillard et al. (IEEE Software 2014): developer memory
+    /// - Ebbinghaus (1885): forgetting curve
+    #[wasm_bindgen(js_name = getKnowledgeHalfLife)]
+    pub fn get_knowledge_half_life(&self) -> Option<String> {
+        let report = self.cached_report.as_ref()?;
+        let mut json = String::with_capacity(4096);
+        json.push('{');
+        write_knowledge_half_life_json_standalone(&mut json, report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns architectural drift index analysis as JSON.
+    ///
+    /// Measures divergence between directory structure and co-change clusters
+    /// using Normalized Mutual Information (NMI).
+    ///
+    /// # Academic Citations
+    /// - Garcia et al. (WICSA 2009): drift detection
+    /// - Maqbool & Babri (JSS 2007): hierarchical clustering comparison
+    /// - Raghavan et al. (Phys Rev 2007): label propagation
+    #[wasm_bindgen(js_name = getArchitecturalDrift)]
+    pub fn get_architectural_drift(&self) -> Option<String> {
+        let report = self.cached_report.as_ref()?;
+        let mut json = String::with_capacity(4096);
+        json.push('{');
+        write_architectural_drift_json_standalone(&mut json, report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns succession readiness analysis as JSON.
+    ///
+    /// For each file, scores how prepared the team is for the primary
+    /// contributor to become unavailable.
+    ///
+    /// # Academic Citations
+    /// - Ricca et al. (JSS 2011): developer succession
+    /// - Rigby & Bird (FSE 2013): knowledge distribution
+    #[wasm_bindgen(js_name = getSuccessionReadiness)]
+    pub fn get_succession_readiness(&self) -> Option<String> {
+        let report = self.cached_report.as_ref()?;
+        let mut json = String::with_capacity(4096);
+        json.push('{');
+        write_succession_readiness_json_standalone(&mut json, report);
+        json.push('}');
+        Some(json)
+    }
 }
 
 // ============================================================================
@@ -2044,6 +2184,372 @@ fn write_tech_expertise_json_standalone(json: &mut String, report: &InsightsRepo
 }
 
 // ============================================================================
+// Intelligence tab write functions (Session 7)
+// ============================================================================
+
+/// Writes contextual complexity data as a JSON field.
+fn write_contextual_complexity_json(json: &mut String, report: &InsightsReport) {
+    json.push_str(",\"contextualComplexity\":{");
+    let cc = &report.contextual_complexity;
+    let _ = write!(
+        json,
+        r#""avgContextSize":{:.2},"threshold":{:.4},"filesWithContext":{},"maxContextSize":{},"files":["#,
+        cc.avg_context_size, cc.threshold, cc.files_with_context, cc.max_context_size
+    );
+    for (i, f) in cc.files.iter().enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"path":"{}","contextSize":{},"weightedComplexity":{:.4},"normalizedComplexity":{:.6},"contextFiles":["#,
+            escape_json(&f.path),
+            f.context_size,
+            f.weighted_complexity,
+            f.normalized_complexity
+        );
+        for (j, (g, conf)) in f.context_files.iter().enumerate() {
+            if j > 0 {
+                json.push(',');
+            }
+            let _ = write!(json, r#"["{}",{:.4}]"#, escape_json(g), conf);
+        }
+        json.push_str("]}");
+    }
+    json.push_str("]}");
+}
+
+/// Writes commit cohesion data as a JSON field.
+fn write_commit_cohesion_json(json: &mut String, report: &InsightsReport) {
+    json.push_str(",\"commitCohesion\":{");
+    let cc = &report.commit_cohesion;
+    let _ = write!(
+        json,
+        r#""medianCohesion":{:.4},"tangledRatio":{:.4},"totalAnalyzed":{},"commits":["#,
+        cc.median_cohesion, cc.tangled_ratio, cc.total_analyzed
+    );
+    for (i, c) in cc.commits.iter().enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"author":"{}","timestamp":{},"cohesion":{:.4},"fileCount":{}}}"#,
+            escape_json(&c.author),
+            c.timestamp,
+            c.cohesion,
+            c.file_count
+        );
+    }
+    json.push_str("],\"developerCohesion\":[");
+    for (i, d) in cc.developer_cohesion.iter().enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"author":"{}","medianCohesion":{:.4},"commitCount":{},"tangledRatio":{:.4}}}"#,
+            escape_json(&d.author),
+            d.median_cohesion,
+            d.commit_count,
+            d.tangled_ratio
+        );
+    }
+    json.push_str("]}");
+}
+
+/// Writes change propagation data as a JSON field.
+fn write_change_propagation_json(json: &mut String, report: &InsightsReport) {
+    json.push_str(",\"changePropagation\":{");
+    let cp = &report.change_propagation;
+    let _ = write!(
+        json,
+        r#""avgRiskScore":{:.4},"avgExpectedDepth":{:.2},"cascadeCount":{},"files":["#,
+        cp.avg_risk_score, cp.avg_expected_depth, cp.cascade_count
+    );
+    for (i, f) in cp.files.iter().enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"path":"{}","riskScore":{:.4},"expectedDepth":{:.2},"predictions":["#,
+            escape_json(&f.path),
+            f.risk_score,
+            f.expected_depth
+        );
+        for (j, (dep, conf)) in f.predictions.iter().enumerate() {
+            if j > 0 {
+                json.push(',');
+            }
+            let _ = write!(json, r#"["{}",{:.4}]"#, escape_json(dep), conf);
+        }
+        json.push_str("],\"depthCounts\":[");
+        for (j, count) in f.depth_counts.iter().enumerate() {
+            if j > 0 {
+                json.push(',');
+            }
+            let _ = write!(json, "{count}");
+        }
+        json.push_str("]}");
+    }
+    json.push_str("]}");
+}
+
+/// Writes commit message entropy data as a JSON field.
+fn write_commit_message_entropy_json(json: &mut String, report: &InsightsReport) {
+    json.push_str(",\"commitMessageEntropy\":{");
+    let cme = &report.commit_message_entropy;
+    let _ = write!(
+        json,
+        r#""medianInfoDensity":{:.4},"lowInfoRatio":{:.4},"avgCrossEntropy":{:.4},"totalAnalyzed":{},"noMessageCount":{},"commits":["#,
+        cme.median_info_density,
+        cme.low_info_ratio,
+        cme.avg_cross_entropy,
+        cme.total_analyzed,
+        cme.no_message_count
+    );
+    for (i, c) in cme.commits.iter().enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"author":"{}","timestamp":{},"tokenEntropy":{:.4},"informationDensity":{:.4},"crossEntropy":{:.4},"isLowInfo":{},"fileCount":{},"uniqueTokens":{},"totalTokens":{}}}"#,
+            escape_json(&c.author),
+            c.timestamp,
+            c.token_entropy,
+            c.information_density,
+            c.cross_entropy,
+            c.is_low_info,
+            c.file_count,
+            c.unique_tokens,
+            c.total_tokens
+        );
+    }
+    json.push_str("],\"developerQuality\":[");
+    for (i, d) in cme.developer_quality.iter().enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"author":"{}","medianInfoDensity":{:.4},"lowInfoRatio":{:.4},"commitCount":{}}}"#,
+            escape_json(&d.author),
+            d.median_info_density,
+            d.low_info_ratio,
+            d.commit_count
+        );
+    }
+    json.push_str("]}");
+}
+
+/// Writes knowledge half-life data as a JSON field.
+fn write_knowledge_half_life_json(json: &mut String, report: &InsightsReport) {
+    json.push_str(",\"knowledgeHalfLife\":{");
+    let khl = &report.knowledge_half_life;
+    let _ = write!(
+        json,
+        r#""teamKnowledgeFreshness":{:.4},"cliffCount":{},"medianHalfLifeDays":{:.2},"minHalfLifeDays":{:.2},"maxHalfLifeDays":{:.2},"files":["#,
+        khl.team_knowledge_freshness,
+        khl.cliff_count,
+        khl.median_half_life_days,
+        khl.min_half_life_days,
+        khl.max_half_life_days
+    );
+    for (i, f) in khl.files.iter().enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"path":"{}","knowledgeFreshness":{:.4},"topExpert":"{}","halfLifeDays":{:.2},"isKnowledgeCliff":{},"experts":["#,
+            escape_json(&f.path),
+            f.knowledge_freshness,
+            escape_json(&f.top_expert),
+            f.half_life_days,
+            f.is_knowledge_cliff
+        );
+        for (j, (author, k)) in f.experts.iter().enumerate() {
+            if j > 0 {
+                json.push(',');
+            }
+            let _ = write!(json, r#"["{}",{:.4}]"#, escape_json(author), k);
+        }
+        json.push_str("]}");
+    }
+    json.push_str("],\"developers\":[");
+    for (i, d) in khl.developers.iter().enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"author":"{}","knowledgeMass":{:.4},"cliffFileCount":{},"topExpertCount":{}}}"#,
+            escape_json(&d.author),
+            d.knowledge_mass,
+            d.cliff_file_count,
+            d.top_expert_count
+        );
+    }
+    json.push_str("]}");
+}
+
+/// Writes architectural drift data as a JSON field.
+fn write_architectural_drift_json(json: &mut String, report: &InsightsReport) {
+    json.push_str(",\"architecturalDrift\":{");
+    let ad = &report.architectural_drift;
+    let _ = write!(
+        json,
+        r#""driftIndex":{:.4},"nmi":{:.4},"clusterCount":{},"misplacedCount":{},"directories":["#,
+        ad.drift_index, ad.nmi, ad.cluster_count, ad.misplaced_count
+    );
+    for (i, d) in ad.directories.iter().enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"directory":"{}","clusterCount":{},"dominantClusterPct":{:.4},"fileCount":{}}}"#,
+            escape_json(&d.directory),
+            d.cluster_count,
+            d.dominant_cluster_pct,
+            d.file_count
+        );
+    }
+    json.push_str("],\"ghostModules\":[");
+    for (i, gm) in ad.ghost_modules.iter().enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(json, r#"{{"clusterId":{},"directories":["#, gm.cluster_id);
+        for (j, dir) in gm.directories.iter().enumerate() {
+            if j > 0 {
+                json.push(',');
+            }
+            let _ = write!(json, r#""{}""#, escape_json(dir));
+        }
+        json.push_str("],\"files\":[");
+        for (j, file) in gm.files.iter().enumerate() {
+            if j > 0 {
+                json.push(',');
+            }
+            let _ = write!(json, r#""{}""#, escape_json(file));
+        }
+        json.push_str("]}");
+    }
+    json.push_str("],\"files\":[");
+    for (i, f) in ad.files.iter().enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"path":"{}","directory":"{}","clusterId":{},"isMisplaced":{}}}"#,
+            escape_json(&f.path),
+            escape_json(&f.directory),
+            f.cluster_id,
+            f.is_misplaced
+        );
+    }
+    json.push_str("]}");
+}
+
+/// Writes succession readiness data as a JSON field.
+fn write_succession_readiness_json(json: &mut String, report: &InsightsReport) {
+    json.push_str(",\"successionReadiness\":{");
+    let sr = &report.succession_readiness;
+    let _ = write!(
+        json,
+        r#""codebaseReadiness":{:.4},"singlePointOfFailureCount":{},"adequateSuccessionCount":{},"totalFiles":{},"files":["#,
+        sr.codebase_readiness,
+        sr.single_point_of_failure_count,
+        sr.adequate_succession_count,
+        sr.total_files
+    );
+    for (i, f) in sr.files.iter().enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"path":"{}","primaryContributor":"{}","readiness":{:.4},"bestSuccessor":{},"bestSuccessorScore":{:.4},"successionGap":{:.4},"candidates":["#,
+            escape_json(&f.path),
+            escape_json(&f.primary_contributor),
+            f.readiness,
+            f.best_successor.as_ref().map_or_else(
+                || "null".to_string(),
+                |s| {
+                    let escaped = escape_json(s);
+                    format!("\"{escaped}\"")
+                }
+            ),
+            f.best_successor_score,
+            f.succession_gap
+        );
+        for (j, (name, score)) in f.candidates.iter().enumerate() {
+            if j > 0 {
+                json.push(',');
+            }
+            let _ = write!(json, r#"["{}",{:.4}]"#, escape_json(name), score);
+        }
+        json.push_str("]}");
+    }
+    json.push_str("]}");
+}
+
+// Standalone variants for individual endpoints
+
+/// Standalone writer for contextual complexity endpoint.
+fn write_contextual_complexity_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_contextual_complexity_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone writer for commit cohesion endpoint.
+fn write_commit_cohesion_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_commit_cohesion_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone writer for change propagation endpoint.
+fn write_change_propagation_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_change_propagation_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone writer for commit message entropy endpoint.
+fn write_commit_message_entropy_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_commit_message_entropy_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone writer for knowledge half-life endpoint.
+fn write_knowledge_half_life_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_knowledge_half_life_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone writer for architectural drift endpoint.
+fn write_architectural_drift_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_architectural_drift_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone writer for succession readiness endpoint.
+fn write_succession_readiness_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_succession_readiness_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+// ============================================================================
 // Tests
 // ============================================================================
 
@@ -2120,6 +2626,7 @@ mod tests {
         let records = vec![CommitRecord {
             timestamp: 1000,
             author: "Alice".to_string(),
+            message: None,
             files: vec![FileRecord {
                 path: "test.rs".to_string(),
                 action: FileActionKind::Modify,
@@ -2160,6 +2667,7 @@ mod tests {
             CommitRecord {
                 timestamp: 1000,
                 author: "Alice".to_string(),
+                message: None,
                 files: vec![FileRecord {
                     path: "a.rs".to_string(),
                     action: FileActionKind::Create,
@@ -2168,6 +2676,7 @@ mod tests {
             CommitRecord {
                 timestamp: 2000,
                 author: "Alice".to_string(),
+                message: None,
                 files: vec![FileRecord {
                     path: "b.rs".to_string(),
                     action: FileActionKind::Create,
@@ -2187,6 +2696,7 @@ mod tests {
         let records = vec![CommitRecord {
             timestamp: 1000,
             author: "Alice".to_string(),
+            message: None,
             files: vec![
                 FileRecord {
                     path: "a.rs".to_string(),
@@ -2211,6 +2721,7 @@ mod tests {
             CommitRecord {
                 timestamp: 1000,
                 author: "Alice".to_string(),
+                message: None,
                 files: vec![FileRecord {
                     path: "a.rs".to_string(),
                     action: FileActionKind::Modify,
@@ -2219,6 +2730,7 @@ mod tests {
             CommitRecord {
                 timestamp: 2000,
                 author: "Alice".to_string(),
+                message: None,
                 files: vec![FileRecord {
                     path: "a.rs".to_string(),
                     action: FileActionKind::Modify,
@@ -2237,6 +2749,7 @@ mod tests {
         let records = vec![CommitRecord {
             timestamp: 1000,
             author: "Alice".to_string(),
+            message: None,
             files: vec![FileRecord {
                 path: "solo.rs".to_string(),
                 action: FileActionKind::Create,
@@ -2255,6 +2768,7 @@ mod tests {
             CommitRecord {
                 timestamp: 1000,
                 author: "Alice".to_string(),
+                message: None,
                 files: vec![FileRecord {
                     path: "a.rs".to_string(),
                     action: FileActionKind::Modify,
@@ -2263,6 +2777,7 @@ mod tests {
             CommitRecord {
                 timestamp: 2000,
                 author: "Bob".to_string(),
+                message: None,
                 files: vec![FileRecord {
                     path: "b.rs".to_string(),
                     action: FileActionKind::Create,
@@ -2283,6 +2798,7 @@ mod tests {
             CommitRecord {
                 timestamp: 1000,
                 author: "Alice".to_string(),
+                message: None,
                 files: vec![FileRecord {
                     path: "a.rs".to_string(),
                     action: FileActionKind::Create,
@@ -2291,6 +2807,7 @@ mod tests {
             CommitRecord {
                 timestamp: 2000,
                 author: "Alice".to_string(),
+                message: None,
                 files: vec![FileRecord {
                     path: "a.rs".to_string(),
                     action: FileActionKind::Delete,
@@ -2310,6 +2827,7 @@ mod tests {
             CommitRecord {
                 timestamp: 1000,
                 author: "Alice".to_string(),
+                message: None,
                 files: vec![FileRecord {
                     path: "a.rs".to_string(),
                     action: FileActionKind::Create,
@@ -2318,6 +2836,7 @@ mod tests {
             CommitRecord {
                 timestamp: 2000,
                 author: "Alice".to_string(),
+                message: None,
                 files: vec![FileRecord {
                     path: "b.rs".to_string(),
                     action: FileActionKind::Create,
@@ -2326,6 +2845,7 @@ mod tests {
             CommitRecord {
                 timestamp: 3000,
                 author: "Bob".to_string(),
+                message: None,
                 files: vec![FileRecord {
                     path: "c.rs".to_string(),
                     action: FileActionKind::Create,
@@ -2346,6 +2866,7 @@ mod tests {
             CommitRecord {
                 timestamp: 1000,
                 author: "Alice".to_string(),
+                message: None,
                 files: vec![FileRecord {
                     path: "a.rs".to_string(),
                     action: FileActionKind::Modify,
@@ -2354,6 +2875,7 @@ mod tests {
             CommitRecord {
                 timestamp: 2000,
                 author: "Alice".to_string(),
+                message: None,
                 files: vec![FileRecord {
                     path: "b.rs".to_string(),
                     action: FileActionKind::Modify,
@@ -2373,6 +2895,7 @@ mod tests {
         let records = vec![CommitRecord {
             timestamp: 3600, // 01:00 UTC — high risk
             author: "Alice".to_string(),
+            message: None,
             files: vec![FileRecord {
                 path: "a.rs".to_string(),
                 action: FileActionKind::Modify,
@@ -2392,6 +2915,7 @@ mod tests {
             CommitRecord {
                 timestamp: 1000,
                 author: "Alice".to_string(),
+                message: None,
                 files: vec![FileRecord {
                     path: "a.rs".to_string(),
                     action: FileActionKind::Modify,
@@ -2400,6 +2924,7 @@ mod tests {
             CommitRecord {
                 timestamp: 2000,
                 author: "Alice".to_string(),
+                message: None,
                 files: vec![FileRecord {
                     path: "a.rs".to_string(),
                     action: FileActionKind::Modify,
@@ -2419,6 +2944,7 @@ mod tests {
         let records = vec![CommitRecord {
             timestamp: 1000,
             author: "Alice".to_string(),
+            message: None,
             files: vec![FileRecord {
                 path: "src/a.rs".to_string(),
                 action: FileActionKind::Modify,
@@ -2437,6 +2963,7 @@ mod tests {
         let records = vec![CommitRecord {
             timestamp: 1000,
             author: "Alice".to_string(),
+            message: None,
             files: vec![FileRecord {
                 path: "a.rs".to_string(),
                 action: FileActionKind::Create,
@@ -2455,6 +2982,7 @@ mod tests {
         let records = vec![CommitRecord {
             timestamp: 1000,
             author: "Alice".to_string(),
+            message: None,
             files: vec![FileRecord {
                 path: "a.rs".to_string(),
                 action: FileActionKind::Create,
@@ -2474,6 +3002,7 @@ mod tests {
             CommitRecord {
                 timestamp: 1000,
                 author: "Alice".to_string(),
+                message: None,
                 files: vec![FileRecord {
                     path: "a.rs".to_string(),
                     action: FileActionKind::Create,
@@ -2482,6 +3011,7 @@ mod tests {
             CommitRecord {
                 timestamp: 2000,
                 author: "Alice".to_string(),
+                message: None,
                 files: vec![FileRecord {
                     path: "a.rs".to_string(),
                     action: FileActionKind::Delete,
@@ -2502,6 +3032,7 @@ mod tests {
             CommitRecord {
                 timestamp: 1000,
                 author: "Alice".to_string(),
+                message: None,
                 files: vec![FileRecord {
                     path: "shared.rs".to_string(),
                     action: FileActionKind::Modify,
@@ -2510,6 +3041,7 @@ mod tests {
             CommitRecord {
                 timestamp: 2000,
                 author: "Bob".to_string(),
+                message: None,
                 files: vec![FileRecord {
                     path: "shared.rs".to_string(),
                     action: FileActionKind::Modify,
@@ -2529,6 +3061,7 @@ mod tests {
         let records = vec![CommitRecord {
             timestamp: 1000,
             author: "O'Brien".to_string(),
+            message: None,
             files: vec![FileRecord {
                 path: "path/with \"quotes\".rs".to_string(),
                 action: FileActionKind::Modify,
@@ -2551,6 +3084,7 @@ mod tests {
             CommitRecord {
                 timestamp: 1000,
                 author: "Alice".to_string(),
+                message: None,
                 files: vec![FileRecord {
                     path: "src/main.rs".to_string(),
                     action: FileActionKind::Create,
@@ -2559,6 +3093,7 @@ mod tests {
             CommitRecord {
                 timestamp: 2000,
                 author: "Alice".to_string(),
+                message: None,
                 files: vec![FileRecord {
                     path: "src/main.rs".to_string(),
                     action: FileActionKind::Modify,
@@ -2591,6 +3126,7 @@ mod tests {
             CommitRecord {
                 timestamp: 1000,
                 author: "Alice".to_string(),
+                message: None,
                 files: vec![FileRecord {
                     path: "a.rs".to_string(),
                     action: FileActionKind::Create,
@@ -2599,6 +3135,7 @@ mod tests {
             CommitRecord {
                 timestamp: 2000,
                 author: "Alice".to_string(),
+                message: None,
                 files: vec![FileRecord {
                     path: "b.rs".to_string(),
                     action: FileActionKind::Create,
@@ -2628,6 +3165,7 @@ mod tests {
             CommitRecord {
                 timestamp: 1000,
                 author: "Alice".to_string(),
+                message: None,
                 files: vec![FileRecord {
                     path: "a.rs".to_string(),
                     action: FileActionKind::Create,
@@ -2636,6 +3174,7 @@ mod tests {
             CommitRecord {
                 timestamp: 2000,
                 author: "Bob".to_string(),
+                message: None,
                 files: vec![FileRecord {
                     path: "b.rs".to_string(),
                     action: FileActionKind::Create,

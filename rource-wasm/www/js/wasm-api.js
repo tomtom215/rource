@@ -846,3 +846,135 @@ export function getAllUserMetrics() {
     }
     return [];
 }
+
+// ============================================================================
+// Intelligence Tab API: Novel Research Metrics (M1-M7)
+// ============================================================================
+
+/**
+ * Returns contextual complexity (working set size) analysis.
+ * For each file, the number of other files a developer must
+ * simultaneously understand to safely modify it.
+ *
+ * Academic basis: Bavota et al. (ICSM 2013), Gall et al. (ICSE 1998),
+ * Denning (CACM 1968) working set model.
+ *
+ * @returns {Object|null} Contextual complexity data
+ */
+export function getContextualComplexity() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getContextualComplexity', () => rource.getContextualComplexity(), null);
+        return parseInsightsJson('getContextualComplexity', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns commit cohesion index analysis.
+ * Measures whether commits are atomic (tightly related) or tangled
+ * using normalized pairwise directory distance.
+ *
+ * Academic basis: Herzig & Zeller (ICSE 2013), Kirinuki et al. (SANER 2014).
+ *
+ * @returns {Object|null} Commit cohesion data
+ */
+export function getCommitCohesion() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getCommitCohesion', () => rource.getCommitCohesion(), null);
+        return parseInsightsJson('getCommitCohesion', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns change propagation prediction analysis.
+ * Predicts which files need concurrent modification using historical
+ * co-change patterns and transitive cascade depth.
+ *
+ * Academic basis: Hassan & Holt (ICSM 2004), Zimmermann et al. (ESEC/FSE 2005).
+ *
+ * @returns {Object|null} Change propagation data
+ */
+export function getChangePropagation() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getChangePropagation', () => rource.getChangePropagation(), null);
+        return parseInsightsJson('getChangePropagation', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns commit message entropy analysis.
+ * Measures information density and quality of commit messages
+ * using Shannon entropy and cross-entropy.
+ *
+ * Academic basis: Dyer et al. (MSR 2013), Hindle et al. (ICSE 2012).
+ *
+ * @returns {Object|null} Commit message entropy data
+ */
+export function getCommitMessageEntropy() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getCommitMessageEntropy', () => rource.getCommitMessageEntropy(), null);
+        return parseInsightsJson('getCommitMessageEntropy', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns knowledge half-life analysis.
+ * Models exponential knowledge decay per-file with adaptive decay rates.
+ *
+ * Academic basis: Fritz et al. (ICSE 2010), Robillard et al. (IEEE Software 2014),
+ * Ebbinghaus (1885) forgetting curve.
+ *
+ * @returns {Object|null} Knowledge half-life data
+ */
+export function getKnowledgeHalfLife() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getKnowledgeHalfLife', () => rource.getKnowledgeHalfLife(), null);
+        return parseInsightsJson('getKnowledgeHalfLife', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns architectural drift index analysis.
+ * Measures divergence between directory structure and co-change clusters
+ * using Normalized Mutual Information (NMI).
+ *
+ * Academic basis: Garcia et al. (WICSA 2009), Maqbool & Babri (JSS 2007),
+ * Raghavan et al. (Phys Rev 2007) label propagation.
+ *
+ * @returns {Object|null} Architectural drift data
+ */
+export function getArchitecturalDrift() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getArchitecturalDrift', () => rource.getArchitecturalDrift(), null);
+        return parseInsightsJson('getArchitecturalDrift', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns succession readiness analysis.
+ * For each file, scores how prepared the team is for the primary
+ * contributor to become unavailable.
+ *
+ * Academic basis: Ricca et al. (JSS 2011), Rigby & Bird (FSE 2013).
+ *
+ * @returns {Object|null} Succession readiness data
+ */
+export function getSuccessionReadiness() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getSuccessionReadiness', () => rource.getSuccessionReadiness(), null);
+        return parseInsightsJson('getSuccessionReadiness', json, null);
+    }
+    return null;
+}
