@@ -263,3 +263,125 @@ export function renderFocusTable(devs) {
     html += '</tbody></table></div>';
     return html;
 }
+
+/**
+ * Renders the developer experience table.
+ * Field names verified: insights.rs:1671-1679
+ *   author, experienceScore, tenureDays, totalCommits, uniqueFiles
+ */
+export function renderExperienceTable(devs) {
+    const sorted = [...devs].sort((a, b) => (b.experienceScore || 0) - (a.experienceScore || 0));
+    const visible = sorted.slice(0, 10);
+    const hidden = sorted.slice(10);
+    let html = `<div class="insights-table-wrap">
+        <table class="insights-table">
+            <thead><tr>
+                <th scope="col">Developer</th>
+                <th scope="col" class="num">Experience</th>
+                <th scope="col" class="num">Tenure</th>
+                <th scope="col" class="num">Commits</th>
+            </tr></thead>
+            <tbody>`;
+    for (const d of visible) {
+        html += `<tr>
+            <td>${escapeHtml(d.author || '')}</td>
+            <td class="num">${formatNumber(d.experienceScore, 1)}</td>
+            <td class="num">${formatNumber(d.tenureDays, 0)} days</td>
+            <td class="num">${formatInt(d.totalCommits || 0)}</td>
+        </tr>`;
+    }
+    for (const d of hidden) {
+        html += `<tr class="insights-hidden-row">
+            <td>${escapeHtml(d.author || '')}</td>
+            <td class="num">${formatNumber(d.experienceScore, 1)}</td>
+            <td class="num">${formatNumber(d.tenureDays, 0)} days</td>
+            <td class="num">${formatInt(d.totalCommits || 0)}</td>
+        </tr>`;
+    }
+    html += '</tbody></table></div>';
+    if (hidden.length > 0) {
+        html += `<button type="button" class="insights-show-all">Show all (${devs.length})</button>`;
+    }
+    return html;
+}
+
+/**
+ * Renders the ownership fragmentation table.
+ * Field names verified: insights.rs:1698-1705
+ *   path, giniCoefficient, contributorCount, ownershipType
+ */
+export function renderOwnershipTable(files) {
+    const sorted = [...files].sort((a, b) => (b.giniCoefficient || 0) - (a.giniCoefficient || 0));
+    const visible = sorted.slice(0, 10);
+    const hidden = sorted.slice(10);
+    let html = `<div class="insights-table-wrap">
+        <table class="insights-table">
+            <thead><tr>
+                <th scope="col">File</th>
+                <th scope="col" class="num">Gini</th>
+                <th scope="col">Ownership</th>
+            </tr></thead>
+            <tbody>`;
+    for (const f of visible) {
+        const typeClass = f.ownershipType === 'Fragmented' ? 'risk-medium' : '';
+        html += `<tr class="${typeClass}">
+            <td class="filepath" title="${escapeHtml(f.path || '')}">${escapeHtml(truncatePath(f.path || ''))}</td>
+            <td class="num">${formatNumber(f.giniCoefficient, 3)}</td>
+            <td>${escapeHtml(f.ownershipType || 'N/A')}</td>
+        </tr>`;
+    }
+    for (const f of hidden) {
+        html += `<tr class="insights-hidden-row">
+            <td class="filepath" title="${escapeHtml(f.path || '')}">${escapeHtml(truncatePath(f.path || ''))}</td>
+            <td class="num">${formatNumber(f.giniCoefficient, 3)}</td>
+            <td>${escapeHtml(f.ownershipType || 'N/A')}</td>
+        </tr>`;
+    }
+    html += '</tbody></table></div>';
+    if (hidden.length > 0) {
+        html += `<button type="button" class="insights-show-all">Show all (${files.length})</button>`;
+    }
+    return html;
+}
+
+/**
+ * Renders the knowledge distribution table (per-directory entropy).
+ * Field names verified: insights.rs:1737-1747
+ *   directory, normalizedEntropy, contributorCount, dominantContributor, dominantContributorShare
+ */
+export function renderKnowledgeDistributionTable(dirs) {
+    const sorted = [...dirs].sort((a, b) => (a.normalizedEntropy || 0) - (b.normalizedEntropy || 0));
+    const visible = sorted.slice(0, 10);
+    const hidden = sorted.slice(10);
+    let html = `<div class="insights-table-wrap">
+        <table class="insights-table">
+            <thead><tr>
+                <th scope="col">Directory</th>
+                <th scope="col" class="num">Entropy</th>
+                <th scope="col">Top Contributor</th>
+                <th scope="col" class="num">Share</th>
+            </tr></thead>
+            <tbody>`;
+    for (const d of visible) {
+        const riskClass = (d.normalizedEntropy || 0) < 0.3 ? 'risk-medium' : '';
+        html += `<tr class="${riskClass}">
+            <td class="filepath" title="${escapeHtml(d.directory || '')}">${escapeHtml(truncatePath(d.directory || ''))}</td>
+            <td class="num">${formatNumber(d.normalizedEntropy, 3)}</td>
+            <td>${escapeHtml(d.dominantContributor || 'N/A')}</td>
+            <td class="num">${formatPercentage(d.dominantContributorShare)}</td>
+        </tr>`;
+    }
+    for (const d of hidden) {
+        html += `<tr class="insights-hidden-row">
+            <td class="filepath" title="${escapeHtml(d.directory || '')}">${escapeHtml(truncatePath(d.directory || ''))}</td>
+            <td class="num">${formatNumber(d.normalizedEntropy, 3)}</td>
+            <td>${escapeHtml(d.dominantContributor || 'N/A')}</td>
+            <td class="num">${formatPercentage(d.dominantContributorShare)}</td>
+        </tr>`;
+    }
+    html += '</tbody></table></div>';
+    if (hidden.length > 0) {
+        html += `<button type="button" class="insights-show-all">Show all (${dirs.length})</button>`;
+    }
+    return html;
+}

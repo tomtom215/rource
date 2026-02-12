@@ -110,6 +110,10 @@ fn format_insights_json(report: &InsightsReport) -> String {
     write_congruence_json(&mut json, report);
     write_survival_json(&mut json, report);
     write_network_json(&mut json, report);
+    write_developer_experience_json(&mut json, report);
+    write_ownership_fragmentation_json(&mut json, report);
+    write_release_rhythm_json(&mut json, report);
+    write_knowledge_distribution_json(&mut json, report);
     json.push('}');
     json
 }
@@ -1274,6 +1278,66 @@ impl Rource {
         json.push('}');
         Some(json)
     }
+
+    /// Returns developer experience scores (Mockus & Votta 2000).
+    #[wasm_bindgen(js_name = getDeveloperExperience)]
+    pub fn get_developer_experience(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let mut json = String::with_capacity(1024);
+        json.push('{');
+        write_developer_experience_json_standalone(&mut json, &report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns per-file ownership fragmentation / Gini (Bird et al. 2011).
+    #[wasm_bindgen(js_name = getOwnershipFragmentation)]
+    pub fn get_ownership_fragmentation(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let mut json = String::with_capacity(1024);
+        json.push('{');
+        write_ownership_fragmentation_json_standalone(&mut json, &report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns release rhythm analysis (Khomh et al. 2012).
+    #[wasm_bindgen(js_name = getReleaseRhythm)]
+    pub fn get_release_rhythm(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let mut json = String::with_capacity(512);
+        json.push('{');
+        write_release_rhythm_json_standalone(&mut json, &report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns per-directory knowledge distribution entropy (Constantinou & Mens 2017).
+    #[wasm_bindgen(js_name = getKnowledgeDistribution)]
+    pub fn get_knowledge_distribution(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let mut json = String::with_capacity(1024);
+        json.push('{');
+        write_knowledge_distribution_json_standalone(&mut json, &report);
+        json.push('}');
+        Some(json)
+    }
 }
 
 // ============================================================================
@@ -1418,7 +1482,7 @@ fn format_file_metrics_json(fm: &rource_core::insights::index::FileMetrics) -> S
     let mut json = String::with_capacity(512);
     let _ = write!(
         json,
-        r#"{{"hotspotScore":{:.4},"hotspotRank":{},"totalChanges":{},"contributorCount":{},"topOwnerShare":{:.4},"topOwner":"{}","lifecycleStage":"{}","ageDays":{:.1},"burstCount":{},"burstRiskScore":{:.4},"circadianRisk":{:.4},"knowledgeEntropy":{:.4},"isKnowledgeSilo":{},"diffusionScore":{:.4},"couplingDegree":{}}}"#,
+        r#"{{"hotspotScore":{:.4},"hotspotRank":{},"totalChanges":{},"contributorCount":{},"topOwnerShare":{:.4},"topOwner":"{}","lifecycleStage":"{}","ageDays":{:.1},"burstCount":{},"burstRiskScore":{:.4},"circadianRisk":{:.4},"knowledgeEntropy":{:.4},"isKnowledgeSilo":{},"diffusionScore":{:.4},"couplingDegree":{},"ownershipGini":{:.4},"defectScore":{:.4}}}"#,
         fm.hotspot_score,
         fm.hotspot_rank
             .map_or_else(|| "null".to_string(), |r| r.to_string()),
@@ -1435,6 +1499,8 @@ fn format_file_metrics_json(fm: &rource_core::insights::index::FileMetrics) -> S
         fm.is_knowledge_silo,
         fm.diffusion_score,
         fm.coupling_degree,
+        fm.ownership_gini,
+        fm.defect_score,
     );
     json
 }
@@ -1444,7 +1510,7 @@ fn format_user_metrics_json(um: &rource_core::insights::index::UserMetrics) -> S
     let mut json = String::with_capacity(384);
     let _ = write!(
         json,
-        r#"{{"commitCount":{},"profileType":"{}","uniqueFiles":{},"avgFilesPerCommit":{:.2},"activeSpanDays":{:.1},"cadenceType":"{}","meanCommitInterval":{:.1},"focusScore":{:.4},"networkDegree":{},"networkBetweenness":{:.4},"circadianAvgRisk":{:.4},"directoriesTouched":{}}}"#,
+        r#"{{"commitCount":{},"profileType":"{}","uniqueFiles":{},"avgFilesPerCommit":{:.2},"activeSpanDays":{:.1},"cadenceType":"{}","meanCommitInterval":{:.1},"focusScore":{:.4},"networkDegree":{},"networkBetweenness":{:.4},"circadianAvgRisk":{:.4},"directoriesTouched":{},"experienceScore":{:.4},"tenureDays":{:.1}}}"#,
         um.commit_count,
         um.profile_type,
         um.unique_files,
@@ -1457,6 +1523,8 @@ fn format_user_metrics_json(um: &rource_core::insights::index::UserMetrics) -> S
         um.network_betweenness,
         um.circadian_avg_risk,
         um.directories_touched,
+        um.experience_score,
+        um.tenure_days,
     );
     json
 }
@@ -1583,6 +1651,129 @@ fn write_survival_json_standalone(json: &mut String, report: &InsightsReport) {
 fn write_network_json_standalone(json: &mut String, report: &InsightsReport) {
     let mut buf = String::new();
     write_network_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+// ============================================================================
+// Session 4: New Academic Metrics JSON Writers
+// ============================================================================
+
+/// Appends developer experience section to the JSON output.
+fn write_developer_experience_json(json: &mut String, report: &InsightsReport) {
+    let de = &report.developer_experience;
+    json.push_str(",\"developerExperience\":{\"avgExperienceScore\":");
+    let _ = write!(json, "{:.4}", de.avg_experience_score);
+    json.push_str(",\"developers\":[");
+    for (i, d) in de.developers.iter().enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"author":"{}","experienceScore":{:.4},"tenureDays":{:.1},"totalCommits":{},"uniqueFiles":{}}}"#,
+            escape_json(&d.author),
+            d.experience_score,
+            d.tenure_days,
+            d.total_commits,
+            d.unique_files,
+        );
+    }
+    json.push_str("]}");
+}
+
+/// Appends ownership fragmentation section to the JSON output.
+fn write_ownership_fragmentation_json(json: &mut String, report: &InsightsReport) {
+    let of = &report.ownership_fragmentation;
+    json.push_str(",\"ownershipFragmentation\":{\"avgGini\":");
+    let _ = write!(json, "{:.4}", of.avg_gini);
+    let _ = write!(
+        json,
+        ",\"fragmentedCount\":{},\"concentratedCount\":{},\"files\":[",
+        of.fragmented_count, of.concentrated_count
+    );
+    for (i, f) in of.files.iter().take(50).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"path":"{}","giniCoefficient":{:.4},"contributorCount":{},"ownershipType":"{}"}}"#,
+            escape_json(&f.path),
+            f.gini_coefficient,
+            f.contributor_count,
+            f.ownership_type,
+        );
+    }
+    json.push_str("]}");
+}
+
+/// Appends release rhythm section to the JSON output.
+fn write_release_rhythm_json(json: &mut String, report: &InsightsReport) {
+    let rr = &report.release_rhythm;
+    let _ = write!(
+        json,
+        r#","releaseRhythm":{{"avgReleaseIntervalDays":{:.1},"releaseRegularity":{:.4},"currentPhase":"{}","velocityTrend":"{}","peakCount":{},"windowCount":{}}}"#,
+        rr.avg_release_interval_days,
+        rr.release_regularity,
+        rr.current_phase,
+        rr.velocity_trend,
+        rr.peaks.len(),
+        rr.windows.len(),
+    );
+}
+
+/// Appends knowledge distribution section to the JSON output.
+fn write_knowledge_distribution_json(json: &mut String, report: &InsightsReport) {
+    let kd = &report.knowledge_distribution;
+    let _ = write!(
+        json,
+        r#","knowledgeDistribution":{{"avgNormalizedEntropy":{:.4},"concentratedCount":{},"distributedCount":{},"directories":["#,
+        kd.avg_normalized_entropy, kd.concentrated_count, kd.distributed_count,
+    );
+    for (i, d) in kd.directories.iter().take(50).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"directory":"{}","knowledgeEntropy":{:.4},"normalizedEntropy":{:.4},"contributorCount":{},"dominantContributorShare":{:.4},"dominantContributor":"{}","totalCommits":{}}}"#,
+            escape_json(&d.directory),
+            d.knowledge_entropy,
+            d.normalized_entropy,
+            d.contributor_count,
+            d.dominant_contributor_share,
+            escape_json(&d.dominant_contributor),
+            d.total_commits,
+        );
+    }
+    json.push_str("]}");
+}
+
+/// Standalone writer for developer experience endpoint.
+fn write_developer_experience_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_developer_experience_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone writer for ownership fragmentation endpoint.
+fn write_ownership_fragmentation_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_ownership_fragmentation_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone writer for release rhythm endpoint.
+fn write_release_rhythm_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_release_rhythm_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone writer for knowledge distribution endpoint.
+fn write_knowledge_distribution_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_knowledge_distribution_json(&mut buf, report);
     json.push_str(buf.trim_start_matches(','));
 }
 

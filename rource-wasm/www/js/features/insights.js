@@ -4,7 +4,7 @@
 /**
  * Rource - Repository Insights Dashboard
  *
- * Mobile-first tabbed dashboard displaying 20 research-backed repository
+ * Mobile-first tabbed dashboard displaying 25 research-backed repository
  * health metrics. Data is lazy-loaded on first panel open and cached
  * per repository load.
  *
@@ -26,7 +26,9 @@ import {
     getDeveloperFocus, getDeveloperNetwork, getKnowledgeMap,
     getModularity, getCongruence, getWorkTypeMix,
     getCircadianRisk, getChangeBursts, getContributionInequality,
-    getFileLifecycles, getFileSurvival
+    getFileLifecycles, getFileSurvival,
+    getDeveloperExperience, getOwnershipFragmentation,
+    getReleaseRhythm, getKnowledgeDistribution
 } from '../wasm-api.js';
 import { formatInt, escapeHtml } from './insights-utils.js';
 import {
@@ -223,6 +225,8 @@ function ensureTabData(tabName) {
         case 'risk':
             if (!cachedData.busFactors) cachedData.busFactors = getBusFactors();
             if (!cachedData.knowledge) cachedData.knowledge = unwrap(getKnowledgeMap(), 'knowledge');
+            if (!cachedData.ownershipFrag) cachedData.ownershipFrag = unwrap(getOwnershipFragmentation(), 'ownershipFragmentation');
+            if (!cachedData.knowledgeDist) cachedData.knowledgeDist = unwrap(getKnowledgeDistribution(), 'knowledgeDistribution');
             if (!cachedData.circadian) cachedData.circadian = unwrap(getCircadianRisk(), 'circadian');
             break;
         case 'team':
@@ -231,12 +235,14 @@ function ensureTabData(tabName) {
             if (!cachedData.network) cachedData.network = unwrap(getDeveloperNetwork(), 'network');
             if (!cachedData.inequality) cachedData.inequality = unwrap(getContributionInequality(), 'inequality');
             if (!cachedData.focus) cachedData.focus = unwrap(getDeveloperFocus(), 'focus');
+            if (!cachedData.experience) cachedData.experience = unwrap(getDeveloperExperience(), 'developerExperience');
             break;
         case 'temporal':
             if (!cachedData.temporal) cachedData.temporal = getTemporalPatterns();
             if (!cachedData.growth) cachedData.growth = unwrap(getCodebaseGrowth(), 'growth');
             if (!cachedData.lifecycle) cachedData.lifecycle = unwrap(getFileLifecycles(), 'lifecycle');
             if (!cachedData.survival) cachedData.survival = unwrap(getFileSurvival(), 'survival');
+            if (!cachedData.releaseRhythm) cachedData.releaseRhythm = unwrap(getReleaseRhythm(), 'releaseRhythm');
             break;
         case 'quality':
             if (!cachedData.workType) cachedData.workType = unwrap(getWorkTypeMix(), 'workType');

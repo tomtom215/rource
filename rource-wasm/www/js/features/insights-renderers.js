@@ -18,7 +18,8 @@ import {
 import {
     renderHotspotsTable, renderBusFactorTable, renderBurstsTable,
     renderKnowledgeTable, renderCouplingTable, renderProfilesTable,
-    renderCadenceTable, renderFocusTable
+    renderCadenceTable, renderFocusTable, renderExperienceTable,
+    renderOwnershipTable, renderKnowledgeDistributionTable
 } from './insights-tables.js';
 
 /**
@@ -91,7 +92,7 @@ export function renderHotspotsTab(cachedData) {
 }
 
 /**
- * Risk tab: bus factor, knowledge silos, circadian risk.
+ * Risk tab: bus factor, knowledge silos, ownership fragmentation, knowledge distribution, circadian risk.
  *
  * Data sources:
  * - cachedData.busFactors: flat array from getBusFactors()
@@ -101,6 +102,12 @@ export function renderHotspotsTab(cachedData) {
  *   Fields: files[], directories[], totalSilos, siloPct, avgEntropy
  *   File fields: path, entropy, isSilo, primaryOwner, contributorCount
  *   (insights.rs:336-372)
+ * - cachedData.ownershipFrag: unwrapped from getOwnershipFragmentation().ownershipFragmentation
+ *   Fields: avgGini, fragmentedCount, concentratedCount, files[]
+ *   (insights.rs:1698-1705)
+ * - cachedData.knowledgeDist: unwrapped from getKnowledgeDistribution().knowledgeDistribution
+ *   Fields: avgNormalizedEntropy, concentratedCount, distributedCount, directories[]
+ *   (insights.rs:1737-1747)
  * - cachedData.circadian: unwrapped from getCircadianRisk().circadian
  *   Fields: files[], authors[], hourlyRisk[], highRiskPct, totalCommitsAnalyzed
  *   (insights.rs:513-556)
@@ -145,6 +152,38 @@ export function renderRiskTab(cachedData) {
         ));
     }
 
+    // Ownership fragmentation — fields verified: insights.rs:1698-1705
+    const of = cachedData.ownershipFrag;
+    if (of) {
+        const files = of.files || [];
+        const fragHealth = of.avgGini > 0.5 ? 'high fragmentation' : of.avgGini > 0.3 ? 'moderate fragmentation' : 'healthy ownership';
+        parts.push(renderMetricSection(
+            'Ownership Fragmentation',
+            'Per-file Gini coefficient measuring how unevenly commit ownership is distributed. High Gini means one person dominates; low Gini means shared ownership.',
+            'Bird et al. 2011, FSE; Greiler et al. 2015',
+            files.length > 0
+                ? renderOwnershipTable(files)
+                : emptyState('No ownership data', 'Requires files with 2+ contributors to measure fragmentation.'),
+            `Average Gini: ${formatNumber(of.avgGini, 3)} (${fragHealth}). ${of.fragmentedCount || 0} fragmented files, ${of.concentratedCount || 0} concentrated files.`
+        ));
+    }
+
+    // Knowledge distribution — fields verified: insights.rs:1737-1747
+    const kd = cachedData.knowledgeDist;
+    if (kd) {
+        const dirs = kd.directories || [];
+        const distHealth = kd.avgNormalizedEntropy > 0.7 ? 'well-distributed' : kd.avgNormalizedEntropy > 0.3 ? 'moderately distributed' : 'concentrated';
+        parts.push(renderMetricSection(
+            'Knowledge Distribution',
+            'Shannon entropy of contributor distribution per directory. Low entropy means knowledge is concentrated in few people; high entropy means it\u2019s well-spread.',
+            'Constantinou &amp; Mens 2017; Fritz et al. 2010',
+            dirs.length > 0
+                ? renderKnowledgeDistributionTable(dirs)
+                : emptyState('No directory distribution data', 'Requires directories with 2+ contributors.'),
+            `Average entropy: ${formatNumber(kd.avgNormalizedEntropy, 3)} (${distHealth}). ${kd.concentratedCount || 0} concentrated directories need attention.`
+        ));
+    }
+
     // Circadian risk — fields verified: insights.rs:513-556
     const c = cachedData.circadian;
     if (c) {
@@ -174,7 +213,7 @@ export function renderRiskTab(cachedData) {
 }
 
 /**
- * Team tab: developer profiles, cadence, network, inequality, focus.
+ * Team tab: developer profiles, cadence, network, inequality, focus, experience.
  *
  * Data sources:
  * - cachedData.profiles: unwrapped from getDeveloperProfiles().profiles
@@ -187,6 +226,8 @@ export function renderRiskTab(cachedData) {
  *   (insights.rs:446-475)
  * - cachedData.focus: unwrapped from getDeveloperFocus().focus
  *   (insights.rs:586-620)
+ * - cachedData.experience: unwrapped from getDeveloperExperience().developerExperience
+ *   (insights.rs:1671-1679)
  */
 export function renderTeamTab(cachedData) {
     const parts = [];
@@ -276,11 +317,26 @@ export function renderTeamTab(cachedData) {
         ));
     }
 
+    // Developer experience — fields verified: insights.rs:1671-1679
+    const exp = cachedData.experience;
+    if (exp) {
+        const devs = exp.developers || [];
+        parts.push(renderMetricSection(
+            'Developer Experience',
+            'Composite experience score combining tenure, commit volume, and file familiarity. Higher scores indicate deeper project knowledge.',
+            'Mockus &amp; Votta 2000; Eyolfson et al. 2014',
+            devs.length > 0
+                ? renderExperienceTable(devs)
+                : emptyState('No experience data', 'Requires commit history with author information.'),
+            `Average experience score: ${formatNumber(exp.avgExperienceScore, 1)}. Experience is computed as tenure \u00D7 ln(1+commits) \u00D7 file familiarity.`
+        ));
+    }
+
     return parts.join('');
 }
 
 /**
- * Temporal tab: activity patterns, codebase growth, file lifecycles, file survival.
+ * Temporal tab: activity patterns, codebase growth, file lifecycles, file survival, release rhythm.
  *
  * Data sources:
  * - cachedData.temporal: flat object from getTemporalPatterns()
@@ -291,6 +347,8 @@ export function renderTeamTab(cachedData) {
  *   (insights.rs:407-442)
  * - cachedData.survival: unwrapped from getFileSurvival().survival
  *   (insights.rs:674-694)
+ * - cachedData.releaseRhythm: unwrapped from getReleaseRhythm().releaseRhythm
+ *   (insights.rs:1713-1722)
  */
 export function renderTemporalTab(cachedData) {
     const parts = [];
@@ -378,6 +436,37 @@ export function renderTemporalTab(cachedData) {
                 ['Early Deletion Rate', formatPercentage(s.infantMortalityRate)],
             ]),
             'A high early deletion rate means many files are created and quickly removed \u2014 this can signal poor planning or excessive experimentation.'
+        ));
+    }
+
+    // Release rhythm — fields verified: insights.rs:1713-1722
+    const rr = cachedData.releaseRhythm;
+    if (rr) {
+        const phaseLabels = {
+            PostRelease: 'Post-Release (cooldown)',
+            Building: 'Building (ramping up)',
+            Quiet: 'Quiet (low activity)',
+            Unknown: 'Unknown',
+        };
+        const trendLabels = {
+            Accelerating: 'Speeding up',
+            Stable: 'Steady pace',
+            Decelerating: 'Slowing down',
+        };
+        parts.push(renderMetricSection(
+            'Release Rhythm',
+            'Analyzes commit velocity patterns over 7-day windows to detect release cycles, development phases, and whether the pace is accelerating or decelerating.',
+            'Khomh et al. 2012; da Costa et al. 2016',
+            renderKeyValueList([
+                ['Avg Release Interval', rr.avgReleaseIntervalDays > 0 ? formatNumber(rr.avgReleaseIntervalDays, 1) + ' days' : 'No clear cycle detected'],
+                ['Regularity', formatNumber(rr.releaseRegularity, 3) + (rr.releaseRegularity > 0.7 ? ' (regular)' : rr.releaseRegularity > 0.3 ? ' (moderate)' : ' (irregular)')],
+                ['Current Phase', escapeHtml(phaseLabels[rr.currentPhase] || rr.currentPhase || 'Unknown')],
+                ['Velocity Trend', escapeHtml(trendLabels[rr.velocityTrend] || rr.velocityTrend || 'Unknown')],
+                ['Activity Peaks', formatInt(rr.peakCount || 0)],
+            ]),
+            rr.releaseRegularity > 0.7
+                ? 'Regular release cadence \u2014 a sign of mature engineering practices.'
+                : 'Irregular release pattern \u2014 consider adopting a fixed release schedule to reduce risk.'
         ));
     }
 

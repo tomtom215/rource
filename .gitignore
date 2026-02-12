@@ -18,6 +18,7 @@ Thumbs.db
 *.profraw
 *.profdata
 *.proptest-regressions
+load_test_smoke_report.json
 mutants.out/
 mutants.out.old/
 mutants-output/
