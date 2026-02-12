@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770841743607,
+  "lastUpdate": 1770855382956,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -6395,6 +6395,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1357436,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "03677f57d20d196adc313b1c7c2feccd91a8ed00",
+          "message": "Merge pull request #293 from tomtom215/claude/zero-copy-stats-buffer-nJdJk\n\nRefactor mobile styles and insights into focused modules",
+          "timestamp": "2026-02-12T01:14:04+01:00",
+          "tree_id": "80defec3cfd05dba56e9c82bdaa7fe1d9a117ea3",
+          "url": "https://github.com/tomtom215/rource/commit/03677f57d20d196adc313b1c7c2feccd91a8ed00"
+        },
+        "date": 1770855381909,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3912600,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3603155,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1357468,
             "unit": "bytes"
           }
         ]
