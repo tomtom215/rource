@@ -97,6 +97,8 @@ use web_sys::HtmlCanvasElement;
 use rource_core::camera::Camera;
 use rource_core::config::Settings;
 use rource_core::entity::{DirId, FileId, UserId};
+use rource_core::insights::index::InsightsIndex;
+use rource_core::insights::{self, CommitRecord, FileActionKind, FileRecord, InsightsReport};
 use rource_core::scene::Scene;
 use rource_math::{Bounds, Vec2};
 use rource_render::backend::wgpu::ComputeEntity;
@@ -583,6 +585,23 @@ pub struct Rource {
     ///   [19] `mouse_world_y`
     ///   [20..31] reserved for future use
     stats_buffer: [f32; 32],
+
+    // ---- Cached Insights (Phase 89) ----
+    /// Cached insights report, computed once when commits are loaded.
+    ///
+    /// Previously, every insights API call recomputed the full pipeline:
+    /// `convert_commits()` → `compute_insights()` → serialize to JSON.
+    /// With 38 API methods, this meant 38 full recomputations per usage.
+    ///
+    /// Now computed eagerly in `load_commits_internal()` and reused by all
+    /// 38 insights methods. Invalidated when commits change.
+    cached_report: Option<InsightsReport>,
+
+    /// Cached insights index (derived from cached report).
+    ///
+    /// Provides O(1) per-file and per-user metric lookups.
+    /// Built from `InsightsIndex::from_report()` at load time.
+    cached_index: Option<InsightsIndex>,
 }
 
 // ============================================================================
@@ -717,6 +736,9 @@ impl Rource {
             render_cooldown: RENDER_COOLDOWN_FRAMES,
             // Zero-copy stats buffer (128 bytes, read directly by JS)
             stats_buffer: [0.0_f32; 32],
+            // Cached insights (Phase 89: computed once at load time)
+            cached_report: None,
+            cached_index: None,
         })
     }
 
@@ -912,9 +934,50 @@ impl Rource {
 
         let count = commits.len();
         self.commits = commits;
+
+        // Phase 89: Eagerly compute and cache insights report + index.
+        // Previously, every insights API call recomputed the full pipeline
+        // (38 methods × full recomputation = massive redundancy).
+        // Now computed once at load time and shared by all 38 API methods.
+        if self.commits.is_empty() {
+            self.cached_report = None;
+            self.cached_index = None;
+        } else {
+            let records = Self::convert_commits_for_insights(&self.commits);
+            let report = insights::compute_insights(&records);
+            let index = InsightsIndex::from_report(&report);
+            self.cached_report = Some(report);
+            self.cached_index = Some(index);
+        }
+
         self.reset_playback_adaptive();
         self.render_cooldown = RENDER_COOLDOWN_FRAMES;
         count
+    }
+
+    /// Converts VCS commits to insight-ready records.
+    ///
+    /// Used by `load_commits_internal()` to build the cached insights.
+    fn convert_commits_for_insights(commits: &[Commit]) -> Vec<CommitRecord> {
+        commits
+            .iter()
+            .map(|c| CommitRecord {
+                timestamp: c.timestamp,
+                author: c.author.clone(),
+                files: c
+                    .files
+                    .iter()
+                    .map(|f| FileRecord {
+                        path: f.path.to_string_lossy().to_string(),
+                        action: match f.action {
+                            rource_vcs::FileAction::Create => FileActionKind::Create,
+                            rource_vcs::FileAction::Modify => FileActionKind::Modify,
+                            rource_vcs::FileAction::Delete => FileActionKind::Delete,
+                        },
+                    })
+                    .collect(),
+            })
+            .collect()
     }
 
     /// Returns the number of loaded commits.

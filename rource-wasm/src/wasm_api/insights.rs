@@ -8,16 +8,16 @@
 //! code health, organizational risk, and development patterns.
 //!
 //! All metrics are computed from the loaded commit data (no external APIs).
-//! Computation happens once at query time and is cached.
+//! The insights report and index are cached on the `Rource` struct at load
+//! time (Phase 89), so all 38 API methods perform zero recomputation.
 
 use std::fmt::Write;
 
 use wasm_bindgen::prelude::*;
 
-use rource_core::insights::{
-    self, index::InsightsIndex, CommitRecord, FileActionKind, FileRecord, InsightsReport,
-    SummaryStats,
-};
+#[cfg(test)]
+use rource_core::insights::{self, index::InsightsIndex, CommitRecord, FileActionKind, FileRecord};
+use rource_core::insights::{InsightsReport, SummaryStats};
 
 use crate::Rource;
 
@@ -25,7 +25,8 @@ use crate::Rource;
 // Conversion: rource_vcs::Commit → insights::CommitRecord
 // ============================================================================
 
-/// Converts loaded VCS commits to insight-ready records.
+/// Converts loaded VCS commits to insight-ready records (test-only; production uses `Rource::convert_commits_for_insights`).
+#[cfg(test)]
 fn convert_commits(commits: &[rource_vcs::Commit]) -> Vec<CommitRecord> {
     commits
         .iter()
@@ -159,7 +160,7 @@ fn write_couplings_json(json: &mut String, report: &InsightsReport) {
         }
         let _ = write!(
             json,
-            r#"{{"fileA":"{}","fileB":"{}","support":{},"confidenceAB":{:.4},"confidenceBA":{:.4},"totalA":{},"totalB":{}}}"#,
+            r#"{{"fileA":"{}","fileB":"{}","support":{},"confidenceAB":{:.4},"confidenceBA":{:.4},"totalA":{},"totalB":{},"lift":{:.4}}}"#,
             escape_json(&c.file_a),
             escape_json(&c.file_b),
             c.support,
@@ -167,6 +168,7 @@ fn write_couplings_json(json: &mut String, report: &InsightsReport) {
             c.confidence_ba,
             c.total_a,
             c.total_b,
+            c.lift,
         );
     }
     json.push(']');
@@ -742,9 +744,9 @@ fn write_network_json(json: &mut String, report: &InsightsReport) {
 
 #[wasm_bindgen]
 impl Rource {
-    /// Computes and returns comprehensive repository insights as JSON.
+    /// Returns comprehensive repository insights as JSON from the cached report.
     ///
-    /// Analyzes the loaded commit history to produce research-backed metrics:
+    /// Includes research-backed metrics:
     ///
     /// - **Hotspots**: Files with high change frequency (defect predictors)
     /// - **Change Coupling**: Hidden dependencies via co-change patterns
@@ -758,17 +760,11 @@ impl Rource {
     ///
     /// # Performance
     ///
-    /// Computed from commit history at call time (not per-frame).
-    /// Typical computation time: <10ms for 10k commits.
+    /// Report is cached at load time (Phase 89). This method only serializes.
     #[wasm_bindgen(js_name = getInsights)]
     pub fn get_insights(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
-        Some(format_insights_json(&report))
+        let report = self.cached_report.as_ref()?;
+        Some(format_insights_json(report))
     }
 
     /// Returns the top N file hotspots as JSON.
@@ -782,12 +778,7 @@ impl Rource {
     /// * `limit` - Maximum number of hotspots to return (default: 20)
     #[wasm_bindgen(js_name = getHotspots)]
     pub fn get_hotspots(&self, limit: Option<usize>) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
         let n = limit.unwrap_or(20).min(report.hotspots.len());
 
         let mut json = String::with_capacity(1024);
@@ -824,12 +815,7 @@ impl Rource {
     /// * `limit` - Maximum number of coupling pairs to return (default: 20)
     #[wasm_bindgen(js_name = getChangeCoupling)]
     pub fn get_change_coupling(&self, limit: Option<usize>) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
         let n = limit.unwrap_or(20).min(report.couplings.len());
 
         let mut json = String::with_capacity(1024);
@@ -840,12 +826,13 @@ impl Rource {
             }
             let _ = write!(
                 json,
-                r#"{{"fileA":"{}","fileB":"{}","support":{},"confidenceAB":{:.4},"confidenceBA":{:.4}}}"#,
+                r#"{{"fileA":"{}","fileB":"{}","support":{},"confidenceAB":{:.4},"confidenceBA":{:.4},"lift":{:.4}}}"#,
                 escape_json(&c.file_a),
                 escape_json(&c.file_b),
                 c.support,
                 c.confidence_ab,
                 c.confidence_ba,
+                c.lift,
             );
         }
         json.push(']');
@@ -859,12 +846,7 @@ impl Rource {
     /// critical key-person risk.
     #[wasm_bindgen(js_name = getBusFactors)]
     pub fn get_bus_factors(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
 
         let mut json = String::with_capacity(512);
         json.push('[');
@@ -900,12 +882,7 @@ impl Rource {
     /// - Average files per commit during/outside bursts
     #[wasm_bindgen(js_name = getTemporalPatterns)]
     pub fn get_temporal_patterns(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
 
         let mut json = String::with_capacity(1024);
         json.push('{');
@@ -945,12 +922,7 @@ impl Rource {
     /// - Lowest bus factors
     #[wasm_bindgen(js_name = getInsightsSummary)]
     pub fn get_insights_summary(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
 
         let mut json = String::with_capacity(1024);
         json.push_str("{\"summary\":");
@@ -1014,14 +986,10 @@ impl Rource {
     /// classification (Lehman 1996 Laws of Software Evolution).
     #[wasm_bindgen(js_name = getCodebaseGrowth)]
     pub fn get_codebase_growth(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
         let mut json = String::with_capacity(512);
         json.push('{');
-        write_growth_json_standalone(&mut json, &report);
+        write_growth_json_standalone(&mut json, report);
         json.push('}');
         Some(json)
     }
@@ -1033,14 +1001,10 @@ impl Rource {
     /// (Hindle et al. 2008, Mockus & Votta 2000).
     #[wasm_bindgen(js_name = getWorkTypeMix)]
     pub fn get_work_type_mix(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
         let mut json = String::with_capacity(256);
         json.push('{');
-        write_work_type_json_standalone(&mut json, &report);
+        write_work_type_json_standalone(&mut json, report);
         json.push('}');
         Some(json)
     }
@@ -1051,14 +1015,10 @@ impl Rource {
     /// regular, moderate, or bursty (Eyolfson et al. 2014).
     #[wasm_bindgen(js_name = getCommitCadence)]
     pub fn get_commit_cadence(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
         let mut json = String::with_capacity(1024);
         json.push('{');
-        write_cadence_json_standalone(&mut json, &report);
+        write_cadence_json_standalone(&mut json, report);
         json.push('}');
         Some(json)
     }
@@ -1069,14 +1029,10 @@ impl Rource {
     /// identify knowledge silos (Rigby & Bird 2013, Fritz et al. 2014).
     #[wasm_bindgen(js_name = getKnowledgeMap)]
     pub fn get_knowledge_map(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
         let mut json = String::with_capacity(2048);
         json.push('{');
-        write_knowledge_json_standalone(&mut json, &report);
+        write_knowledge_json_standalone(&mut json, report);
         json.push('}');
         Some(json)
     }
@@ -1087,14 +1043,10 @@ impl Rource {
     /// on commit share and recency (Mockus et al. 2002).
     #[wasm_bindgen(js_name = getDeveloperProfiles)]
     pub fn get_developer_profiles(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
         let mut json = String::with_capacity(1024);
         json.push('{');
-        write_profiles_json_standalone(&mut json, &report);
+        write_profiles_json_standalone(&mut json, report);
         json.push('}');
         Some(json)
     }
@@ -1106,14 +1058,10 @@ impl Rource {
     /// (Godfrey & Tu 2000, Gall et al. 1998).
     #[wasm_bindgen(js_name = getFileLifecycles)]
     pub fn get_file_lifecycles(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
         let mut json = String::with_capacity(2048);
         json.push('{');
-        write_lifecycle_json_standalone(&mut json, &report);
+        write_lifecycle_json_standalone(&mut json, report);
         json.push('}');
         Some(json)
     }
@@ -1125,14 +1073,10 @@ impl Rource {
     /// (Chelkowski et al. 2016).
     #[wasm_bindgen(js_name = getContributionInequality)]
     pub fn get_contribution_inequality(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
         let mut json = String::with_capacity(1024);
         json.push('{');
-        write_inequality_json_standalone(&mut json, &report);
+        write_inequality_json_standalone(&mut json, report);
         json.push('}');
         Some(json)
     }
@@ -1143,14 +1087,10 @@ impl Rource {
     /// time windows for defect risk prediction (Hassan ICSE 2009).
     #[wasm_bindgen(js_name = getChangeEntropy)]
     pub fn get_change_entropy(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
         let mut json = String::with_capacity(1024);
         json.push('{');
-        write_change_entropy_json_standalone(&mut json, &report);
+        write_change_entropy_json_standalone(&mut json, report);
         json.push('}');
         Some(json)
     }
@@ -1162,14 +1102,10 @@ impl Rource {
     /// (Eyolfson et al. 2011).
     #[wasm_bindgen(js_name = getCircadianRisk)]
     pub fn get_circadian_risk(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
         let mut json = String::with_capacity(2048);
         json.push('{');
-        write_circadian_json_standalone(&mut json, &report);
+        write_circadian_json_standalone(&mut json, report);
         json.push('}');
         Some(json)
     }
@@ -1181,14 +1117,10 @@ impl Rource {
     /// (Nagappan et al. 2010).
     #[wasm_bindgen(js_name = getChangeBursts)]
     pub fn get_change_bursts(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
         let mut json = String::with_capacity(1024);
         json.push('{');
-        write_change_bursts_json_standalone(&mut json, &report);
+        write_change_bursts_json_standalone(&mut json, report);
         json.push('}');
         Some(json)
     }
@@ -1200,14 +1132,10 @@ impl Rource {
     /// More focused developers introduce fewer defects (Posnett et al. 2013).
     #[wasm_bindgen(js_name = getDeveloperFocus)]
     pub fn get_developer_focus(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
         let mut json = String::with_capacity(2048);
         json.push('{');
-        write_focus_json_standalone(&mut json, &report);
+        write_focus_json_standalone(&mut json, report);
         json.push('}');
         Some(json)
     }
@@ -1219,14 +1147,10 @@ impl Rource {
     /// (Silva et al. 2014).
     #[wasm_bindgen(js_name = getModularity)]
     pub fn get_modularity(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
         let mut json = String::with_capacity(512);
         json.push('{');
-        write_modularity_json_standalone(&mut json, &report);
+        write_modularity_json_standalone(&mut json, report);
         json.push('}');
         Some(json)
     }
@@ -1238,14 +1162,10 @@ impl Rource {
     /// Conway's Law quantified (Cataldo et al. 2008).
     #[wasm_bindgen(js_name = getCongruence)]
     pub fn get_congruence(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
         let mut json = String::with_capacity(512);
         json.push('{');
-        write_congruence_json_standalone(&mut json, &report);
+        write_congruence_json_standalone(&mut json, report);
         json.push('}');
         Some(json)
     }
@@ -1257,14 +1177,10 @@ impl Rource {
     /// (Cito et al. 2021).
     #[wasm_bindgen(js_name = getFileSurvival)]
     pub fn get_file_survival(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
         let mut json = String::with_capacity(1024);
         json.push('{');
-        write_survival_json_standalone(&mut json, &report);
+        write_survival_json_standalone(&mut json, report);
         json.push('}');
         Some(json)
     }
@@ -1275,14 +1191,10 @@ impl Rource {
     /// betweenness centrality, and clustering (Begel et al. 2023).
     #[wasm_bindgen(js_name = getDeveloperNetwork)]
     pub fn get_developer_network(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
         let mut json = String::with_capacity(1024);
         json.push('{');
-        write_network_json_standalone(&mut json, &report);
+        write_network_json_standalone(&mut json, report);
         json.push('}');
         Some(json)
     }
@@ -1290,14 +1202,10 @@ impl Rource {
     /// Returns developer experience scores (Mockus & Votta 2000).
     #[wasm_bindgen(js_name = getDeveloperExperience)]
     pub fn get_developer_experience(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
         let mut json = String::with_capacity(1024);
         json.push('{');
-        write_developer_experience_json_standalone(&mut json, &report);
+        write_developer_experience_json_standalone(&mut json, report);
         json.push('}');
         Some(json)
     }
@@ -1305,14 +1213,10 @@ impl Rource {
     /// Returns per-file ownership fragmentation / Gini (Bird et al. 2011).
     #[wasm_bindgen(js_name = getOwnershipFragmentation)]
     pub fn get_ownership_fragmentation(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
         let mut json = String::with_capacity(1024);
         json.push('{');
-        write_ownership_fragmentation_json_standalone(&mut json, &report);
+        write_ownership_fragmentation_json_standalone(&mut json, report);
         json.push('}');
         Some(json)
     }
@@ -1320,14 +1224,10 @@ impl Rource {
     /// Returns release rhythm analysis (Khomh et al. 2012).
     #[wasm_bindgen(js_name = getReleaseRhythm)]
     pub fn get_release_rhythm(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
         let mut json = String::with_capacity(512);
         json.push('{');
-        write_release_rhythm_json_standalone(&mut json, &report);
+        write_release_rhythm_json_standalone(&mut json, report);
         json.push('}');
         Some(json)
     }
@@ -1335,14 +1235,10 @@ impl Rource {
     /// Returns per-directory knowledge distribution entropy (Constantinou & Mens 2017).
     #[wasm_bindgen(js_name = getKnowledgeDistribution)]
     pub fn get_knowledge_distribution(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
         let mut json = String::with_capacity(1024);
         json.push('{');
-        write_knowledge_distribution_json_standalone(&mut json, &report);
+        write_knowledge_distribution_json_standalone(&mut json, report);
         json.push('}');
         Some(json)
     }
@@ -1350,14 +1246,10 @@ impl Rource {
     /// Returns code churn volatility per file (Nagappan & Ball 2005).
     #[wasm_bindgen(js_name = getChurnVolatility)]
     pub fn get_churn_volatility(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
         let mut json = String::with_capacity(1024);
         json.push('{');
-        write_churn_volatility_json_standalone(&mut json, &report);
+        write_churn_volatility_json_standalone(&mut json, report);
         json.push('}');
         Some(json)
     }
@@ -1365,14 +1257,10 @@ impl Rource {
     /// Returns enhanced truck factor via DOA model (Avelino et al. 2016).
     #[wasm_bindgen(js_name = getTruckFactor)]
     pub fn get_truck_factor(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
         let mut json = String::with_capacity(1024);
         json.push('{');
-        write_truck_factor_json_standalone(&mut json, &report);
+        write_truck_factor_json_standalone(&mut json, report);
         json.push('}');
         Some(json)
     }
@@ -1380,14 +1268,10 @@ impl Rource {
     /// Returns developer turnover impact analysis (Mockus 2009).
     #[wasm_bindgen(js_name = getTurnoverImpact)]
     pub fn get_turnover_impact(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
         let mut json = String::with_capacity(1024);
         json.push('{');
-        write_turnover_impact_json_standalone(&mut json, &report);
+        write_turnover_impact_json_standalone(&mut json, report);
         json.push('}');
         Some(json)
     }
@@ -1395,14 +1279,10 @@ impl Rource {
     /// Returns per-commit complexity / tangled change scores (Herzig & Zeller 2013).
     #[wasm_bindgen(js_name = getCommitComplexity)]
     pub fn get_commit_complexity(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
         let mut json = String::with_capacity(2048);
         json.push('{');
-        write_commit_complexity_json_standalone(&mut json, &report);
+        write_commit_complexity_json_standalone(&mut json, report);
         json.push('}');
         Some(json)
     }
@@ -1410,14 +1290,10 @@ impl Rource {
     /// Returns defect-introducing change patterns (Kim et al. 2008).
     #[wasm_bindgen(js_name = getDefectPatterns)]
     pub fn get_defect_patterns(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
         let mut json = String::with_capacity(1024);
         json.push('{');
-        write_defect_patterns_json_standalone(&mut json, &report);
+        write_defect_patterns_json_standalone(&mut json, report);
         json.push('}');
         Some(json)
     }
@@ -1425,14 +1301,10 @@ impl Rource {
     /// Returns language/technology distribution by file extension.
     #[wasm_bindgen(js_name = getTechDistribution)]
     pub fn get_tech_distribution(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
         let mut json = String::with_capacity(2048);
         json.push('{');
-        write_tech_distribution_json_standalone(&mut json, &report);
+        write_tech_distribution_json_standalone(&mut json, report);
         json.push('}');
         Some(json)
     }
@@ -1440,14 +1312,10 @@ impl Rource {
     /// Returns commit activity heatmap (day-of-week × hour-of-day grid).
     #[wasm_bindgen(js_name = getActivityHeatmap)]
     pub fn get_activity_heatmap(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
         let mut json = String::with_capacity(4096);
         json.push('{');
-        write_activity_heatmap_json_standalone(&mut json, &report);
+        write_activity_heatmap_json_standalone(&mut json, report);
         json.push('}');
         Some(json)
     }
@@ -1455,14 +1323,10 @@ impl Rource {
     /// Returns developer technology expertise profiles.
     #[wasm_bindgen(js_name = getTechExpertise)]
     pub fn get_tech_expertise(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
+        let report = self.cached_report.as_ref()?;
         let mut json = String::with_capacity(2048);
         json.push('{');
-        write_tech_expertise_json_standalone(&mut json, &report);
+        write_tech_expertise_json_standalone(&mut json, report);
         json.push('}');
         Some(json)
     }
@@ -1476,8 +1340,8 @@ impl Rource {
 impl Rource {
     /// Returns aggregated academic metrics for a specific file as JSON.
     ///
-    /// Computes the full insights index and performs O(1) lookup by file path.
-    /// Returns `null` if the file is not found in the commit history.
+    /// Performs O(1) lookup from the cached insights index (computed at load time).
+    /// Returns `null` if no commits are loaded or the file is not found.
     ///
     /// # Academic Citations
     ///
@@ -1490,22 +1354,15 @@ impl Rource {
     /// - Godfrey & Tu (ICSM 2000): lifecycle stage
     #[wasm_bindgen(js_name = getFileMetrics)]
     pub fn get_file_metrics(&self, path: &str) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
-        let index = InsightsIndex::from_report(&report);
-
+        let index = self.cached_index.as_ref()?;
         let fm = index.file_metrics(path)?;
         Some(format_file_metrics_json(fm))
     }
 
     /// Returns aggregated academic metrics for a specific developer as JSON.
     ///
-    /// Computes the full insights index and performs O(1) lookup by author name.
-    /// Returns `null` if the author is not found in the commit history.
+    /// Performs O(1) lookup from the cached insights index (computed at load time).
+    /// Returns `null` if no commits are loaded or the author is not found.
     ///
     /// # Academic Citations
     ///
@@ -1516,14 +1373,7 @@ impl Rource {
     /// - Posnett et al. (ICSE 2013): developer focus
     #[wasm_bindgen(js_name = getUserMetrics)]
     pub fn get_user_metrics(&self, author: &str) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
-        let index = InsightsIndex::from_report(&report);
-
+        let index = self.cached_index.as_ref()?;
         let um = index.user_metrics(author)?;
         Some(format_user_metrics_json(um))
     }
@@ -1534,14 +1384,7 @@ impl Rource {
     /// contributor profile distribution, max hotspot score.
     #[wasm_bindgen(js_name = getInsightsIndexSummary)]
     pub fn get_insights_index_summary(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
-        let index = InsightsIndex::from_report(&report);
-
+        let index = self.cached_index.as_ref()?;
         Some(format_index_summary_json(index.summary()))
     }
 
@@ -1551,13 +1394,7 @@ impl Rource {
     /// Useful for bulk visualization (e.g., coloring all files by hotspot score).
     #[wasm_bindgen(js_name = getAllFileMetrics)]
     pub fn get_all_file_metrics(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
-        let index = InsightsIndex::from_report(&report);
+        let index = self.cached_index.as_ref()?;
 
         let mut json = String::with_capacity(index.file_count() * 200);
         json.push('[');
@@ -1578,13 +1415,7 @@ impl Rource {
     /// Each element contains the author name and their aggregated academic metrics.
     #[wasm_bindgen(js_name = getAllUserMetrics)]
     pub fn get_all_user_metrics(&self) -> Option<String> {
-        if self.commits.is_empty() {
-            return None;
-        }
-
-        let records = convert_commits(&self.commits);
-        let report = insights::compute_insights(&records);
-        let index = InsightsIndex::from_report(&report);
+        let index = self.cached_index.as_ref()?;
 
         let mut json = String::with_capacity(index.user_count() * 200);
         json.push('[');
@@ -1610,7 +1441,7 @@ fn format_file_metrics_json(fm: &rource_core::insights::index::FileMetrics) -> S
     let mut json = String::with_capacity(512);
     let _ = write!(
         json,
-        r#"{{"hotspotScore":{:.4},"hotspotRank":{},"totalChanges":{},"contributorCount":{},"topOwnerShare":{:.4},"topOwner":"{}","lifecycleStage":"{}","ageDays":{:.1},"burstCount":{},"burstRiskScore":{:.4},"circadianRisk":{:.4},"knowledgeEntropy":{:.4},"isKnowledgeSilo":{},"diffusionScore":{:.4},"couplingDegree":{},"ownershipGini":{:.4},"defectScore":{:.4},"churnCv":{:.4},"defectPatternScore":{:.4}}}"#,
+        r#"{{"hotspotScore":{:.4},"hotspotRank":{},"totalChanges":{},"contributorCount":{},"topOwnerShare":{:.4},"topOwner":"{}","lifecycleStage":"{}","ageDays":{:.1},"burstCount":{},"burstRiskScore":{:.4},"circadianRisk":{:.4},"knowledgeEntropy":{:.4},"isKnowledgeSilo":{},"diffusionScore":{:.4},"couplingDegree":{},"minorContributors":{},"majorContributors":{},"ownershipGini":{:.4},"defectScore":{:.4},"churnCv":{:.4},"defectPatternScore":{:.4}}}"#,
         fm.hotspot_score,
         fm.hotspot_rank
             .map_or_else(|| "null".to_string(), |r| r.to_string()),
@@ -1627,6 +1458,8 @@ fn format_file_metrics_json(fm: &rource_core::insights::index::FileMetrics) -> S
         fm.is_knowledge_silo,
         fm.diffusion_score,
         fm.coupling_degree,
+        fm.minor_contributors,
+        fm.major_contributors,
         fm.ownership_gini,
         fm.defect_score,
         fm.churn_cv,

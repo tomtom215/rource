@@ -123,6 +123,15 @@ pub struct FileMetrics {
     /// D'Ambros et al. (2009): high coupling indicates hidden dependencies.
     pub coupling_degree: u32,
 
+    /// Number of minor contributors (Bird et al. 2011): contributors with
+    /// < 5% of total changes. High minor count correlates with post-release defects.
+    pub minor_contributors: u32,
+
+    /// Number of major contributors (Bird et al. 2011): contributors with
+    /// ≥ 5% of total changes. Major contributors have enough context to produce
+    /// fewer defects per change.
+    pub major_contributors: u32,
+
     /// Per-file Gini coefficient of contributor commit distribution
     /// (Bird et al. 2011, Greiler et al. 2015). Range: 0.0–1.0.
     /// 0 = equal ownership, 1 = single owner. Mid-range = fragmented (risky).
@@ -179,6 +188,8 @@ impl Default for FileMetrics {
             is_knowledge_silo: false,
             diffusion_score: 0.0,
             coupling_degree: 0,
+            minor_contributors: 0,
+            major_contributors: 0,
             ownership_gini: 0.0,
             defect_score: 0.0,
             churn_cv: 0.0,
@@ -409,6 +420,18 @@ impl InsightsIndex {
             if fm.total_changes == 0 {
                 fm.total_changes = o.total_changes;
             }
+            // Bird et al. (2011) minor/major classification: 5% threshold
+            let mut minor = 0u32;
+            let mut major = 0u32;
+            for c in &o.contributors {
+                if c.share < 0.05 {
+                    minor += 1;
+                } else {
+                    major += 1;
+                }
+            }
+            fm.minor_contributors = minor;
+            fm.major_contributors = major;
         }
 
         // Lifecycle (Godfrey & Tu 2000)
@@ -1148,6 +1171,91 @@ mod tests {
         assert_eq!(format!("{}", CadenceTypeCompact::Regular), "regular");
         assert_eq!(format!("{}", CadenceTypeCompact::Moderate), "moderate");
         assert_eq!(format!("{}", CadenceTypeCompact::Bursty), "bursty");
+    }
+
+    // ---- Bird et al. (2011) minor/major classification ----
+
+    #[test]
+    fn test_minor_major_classification() {
+        // 20 commits from Alice (major), 1 commit from each of Bob, Carol, Dave (minor at <5%)
+        // Total = 23 commits. Alice = 20/23 ≈ 87% (major), others = 1/23 ≈ 4.3% (minor)
+        let mut commits = Vec::new();
+        let base_ts: i64 = 1_700_000_000;
+        for i in 0..20 {
+            commits.push(make_commit(
+                base_ts + i * 86400,
+                "Alice",
+                &[("src/core.rs", FileActionKind::Modify)],
+            ));
+        }
+        for (i, author) in ["Bob", "Carol", "Dave"].iter().enumerate() {
+            commits.push(make_commit(
+                base_ts + (20 + i64::try_from(i).unwrap()) * 86400,
+                author,
+                &[("src/core.rs", FileActionKind::Modify)],
+            ));
+        }
+
+        let report = compute_insights(&commits);
+        let index = InsightsIndex::from_report(&report);
+        let fm = index.file_metrics("src/core.rs").unwrap();
+
+        assert_eq!(fm.contributor_count, 4);
+        // Alice ≈ 87% → major, Bob/Carol/Dave ≈ 4.3% each → minor
+        assert_eq!(fm.major_contributors, 1, "only Alice is major (≥5%)");
+        assert_eq!(fm.minor_contributors, 3, "Bob, Carol, Dave are minor (<5%)");
+    }
+
+    #[test]
+    fn test_minor_major_boundary() {
+        // Test exact 5% boundary: 1/20 = 5% → major (≥ 5%), not minor
+        let mut commits = Vec::new();
+        let base_ts: i64 = 1_700_000_000;
+        for i in 0..19 {
+            commits.push(make_commit(
+                base_ts + i * 86400,
+                "Alice",
+                &[("src/lib.rs", FileActionKind::Modify)],
+            ));
+        }
+        commits.push(make_commit(
+            base_ts + 19 * 86400,
+            "Bob",
+            &[("src/lib.rs", FileActionKind::Modify)],
+        ));
+
+        let report = compute_insights(&commits);
+        let index = InsightsIndex::from_report(&report);
+        let fm = index.file_metrics("src/lib.rs").unwrap();
+
+        assert_eq!(fm.contributor_count, 2);
+        // Alice = 19/20 = 95% → major, Bob = 1/20 = 5% → major (≥ 5%)
+        assert_eq!(fm.major_contributors, 2, "both ≥ 5%");
+        assert_eq!(fm.minor_contributors, 0, "none < 5%");
+    }
+
+    #[test]
+    fn test_minor_major_single_owner() {
+        // Single owner file: 1 major, 0 minor
+        let commits = vec![
+            make_commit(
+                1_700_000_000,
+                "Alice",
+                &[("README.md", FileActionKind::Create)],
+            ),
+            make_commit(
+                1_700_086_400,
+                "Alice",
+                &[("README.md", FileActionKind::Modify)],
+            ),
+        ];
+
+        let report = compute_insights(&commits);
+        let index = InsightsIndex::from_report(&report);
+        let fm = index.file_metrics("README.md").unwrap();
+
+        assert_eq!(fm.major_contributors, 1);
+        assert_eq!(fm.minor_contributors, 0);
     }
 
     // ---- Scale test ----

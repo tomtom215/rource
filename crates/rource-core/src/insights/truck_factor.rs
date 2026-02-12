@@ -25,8 +25,8 @@
 //!
 //! where:
 //!   FA = 1 if d was the first author of f, else 0
-//!   DL = number of commits by d to f (normalized by max commits to f)
-//!   AC = number of commits by others to f (normalized by total commits to f)
+//!   DL = raw number of commits by d to f (per Avelino §3.1)
+//!   AC = raw number of commits by others to f (per Avelino §3.1)
 //! ```
 //!
 //! A developer "knows" a file if `DOA > DOA_THRESHOLD` (default: 3.293, the
@@ -110,7 +110,6 @@ pub fn compute_truck_factor(
 
     for (path, authors) in file_authors {
         let total_commits: u32 = authors.values().sum();
-        let max_commits = authors.values().max().copied().unwrap_or(1);
         let first_author = first_authors.get(path.as_str()).map(String::as_str);
 
         for (dev, &commit_count) in authors {
@@ -119,16 +118,12 @@ pub fn compute_truck_factor(
             } else {
                 0.0
             };
-            let dl = if max_commits > 0 {
-                f64::from(commit_count) / f64::from(max_commits)
-            } else {
-                0.0
-            };
-            let ac = if total_commits > 0 {
-                f64::from(total_commits - commit_count) / f64::from(total_commits)
-            } else {
-                0.0
-            };
+            // Use raw commit counts per Avelino et al. (2016) §3.1:
+            //   DL = number of deliveries (commits) by developer d to file f
+            //   AC = number of acceptances (commits by others) to file f
+            // The regression coefficients (0.164, 0.321) were fitted on raw counts.
+            let dl = f64::from(commit_count);
+            let ac = f64::from(total_commits - commit_count);
 
             let doa = DOA_THRESHOLD + DOA_COEFF_FA * fa + DOA_COEFF_DL * dl - DOA_COEFF_AC * ac;
 

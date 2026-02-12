@@ -183,6 +183,7 @@ mod tests {
             confidence_ba: 0.0,
             total_a: support,
             total_b: support,
+            lift: 0.0,
         }
     }
 
@@ -534,6 +535,7 @@ mod tests {
                             confidence_ba: 0.5,
                             total_a: support * 2,
                             total_b: support * 2,
+                            lift: 1.0,
                         }
                     })
                     .collect()

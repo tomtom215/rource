@@ -47,6 +47,10 @@ pub struct CouplingPair {
     pub total_a: u32,
     /// Total changes to file B across all commits.
     pub total_b: u32,
+    /// Lift (Agrawal et al. 1993): `support × N / (total_a × total_b)`.
+    /// Lift > 1 indicates co-change more often than expected by chance.
+    /// Lift = 1 means independent. Lift < 1 means negatively correlated.
+    pub lift: f64,
 }
 
 /// Accumulates co-change data during commit processing.
@@ -55,6 +59,8 @@ pub struct CouplingAccumulator {
     co_changes: FxHashMap<(String, String), u32>,
     /// Total change count per file (for confidence computation).
     file_totals: FxHashMap<String, u32>,
+    /// Total number of commits processed (for lift computation).
+    total_commits: u32,
 }
 
 impl Default for CouplingAccumulator {
@@ -70,6 +76,7 @@ impl CouplingAccumulator {
         Self {
             co_changes: FxHashMap::default(),
             file_totals: FxHashMap::default(),
+            total_commits: 0,
         }
     }
 
@@ -78,6 +85,8 @@ impl CouplingAccumulator {
     /// For k files, generates k*(k-1)/2 unique pairs.
     /// The caller is responsible for filtering bulk commits.
     pub fn record_commit(&mut self, files: &[FileRecord]) {
+        self.total_commits += 1;
+
         // Collect unique file paths from this commit
         let mut paths: Vec<&str> = files.iter().map(|f| f.path.as_str()).collect();
         paths.sort_unstable();
@@ -102,12 +111,19 @@ impl CouplingAccumulator {
     /// Only pairs with support ≥ `min_support` are included.
     #[must_use]
     pub fn finalize(self, min_support: u32) -> Vec<CouplingPair> {
+        let n = f64::from(self.total_commits);
         self.co_changes
             .into_iter()
             .filter(|(_, count)| *count >= min_support)
             .map(|((file_a, file_b), support)| {
                 let total_a = self.file_totals.get(&file_a).copied().unwrap_or(1);
                 let total_b = self.file_totals.get(&file_b).copied().unwrap_or(1);
+                let denom = f64::from(total_a) * f64::from(total_b);
+                let lift = if denom > 0.0 {
+                    f64::from(support) * n / denom
+                } else {
+                    0.0
+                };
 
                 CouplingPair {
                     file_a,
@@ -117,6 +133,7 @@ impl CouplingAccumulator {
                     confidence_ba: f64::from(support) / f64::from(total_b),
                     total_a,
                     total_b,
+                    lift,
                 }
             })
             .collect()
@@ -482,6 +499,70 @@ mod tests {
         assert!(
             pairs2.is_empty(),
             "support=3 with min_support=4 should be excluded"
+        );
+    }
+
+    #[test]
+    fn test_lift_always_cochanged() {
+        // Files always co-change across all commits → lift = 1.0 (independent)
+        let mut acc = CouplingAccumulator::new();
+        for _ in 0..10 {
+            acc.record_commit(&[file("a.rs"), file("b.rs")]);
+        }
+        let pairs = acc.finalize(1);
+        // lift = support * N / (total_a * total_b) = 10 * 10 / (10 * 10) = 1.0
+        assert!(
+            (pairs[0].lift - 1.0).abs() < 1e-10,
+            "lift={}, expected=1.0",
+            pairs[0].lift
+        );
+    }
+
+    #[test]
+    fn test_lift_positive_correlation() {
+        // a.rs changes 5 times, b.rs changes 5 times, co-change 5 times, N=10
+        // lift = 5 * 10 / (5 * 5) = 2.0 (positive correlation)
+        let mut acc = CouplingAccumulator::new();
+        for _ in 0..5 {
+            acc.record_commit(&[file("a.rs"), file("b.rs")]);
+        }
+        for _ in 0..5 {
+            acc.record_commit(&[file("c.rs")]); // unrelated commits
+        }
+        let pairs = acc.finalize(1);
+        let ab = pairs
+            .iter()
+            .find(|p| p.file_a == "a.rs" && p.file_b == "b.rs")
+            .expect("a.rs-b.rs pair");
+        // lift = 5 * 10 / (5 * 5) = 2.0
+        assert!(
+            (ab.lift - 2.0).abs() < 1e-10,
+            "lift={}, expected=2.0",
+            ab.lift
+        );
+    }
+
+    #[test]
+    fn test_lift_asymmetric() {
+        // a.rs changes 4 times, b.rs changes 3 times, co-change 2 times, N=5
+        // lift = 2 * 5 / (4 * 3) = 10/12 ≈ 0.833 (slightly negatively correlated)
+        let mut acc = CouplingAccumulator::new();
+        acc.record_commit(&[file("a.rs"), file("b.rs")]); // co-change 1
+        acc.record_commit(&[file("a.rs"), file("b.rs")]); // co-change 2
+        acc.record_commit(&[file("a.rs"), file("c.rs")]); // a alone
+        acc.record_commit(&[file("a.rs")]); // a alone
+        acc.record_commit(&[file("b.rs")]); // b alone
+        let pairs = acc.finalize(1);
+        let ab = pairs
+            .iter()
+            .find(|p| p.file_a == "a.rs" && p.file_b == "b.rs")
+            .expect("a.rs-b.rs pair");
+        let expected = 2.0 * 5.0 / (4.0 * 3.0);
+        assert!(
+            (ab.lift - expected).abs() < 1e-10,
+            "lift={}, expected={}",
+            ab.lift,
+            expected
         );
     }
 

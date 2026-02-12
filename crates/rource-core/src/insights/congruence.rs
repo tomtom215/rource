@@ -180,6 +180,7 @@ mod tests {
             confidence_ba: 1.0,
             total_a: 3,
             total_b: 3,
+            lift: 1.0,
         }
     }
 
@@ -505,6 +506,7 @@ mod tests {
                         confidence_ba: 0.5,
                         total_a: 6,
                         total_b: 6,
+                        lift: 1.0,
                     });
                 }
                 let mut fa: FxHashMap<String, FxHashMap<String, u32>> = FxHashMap::default();
@@ -547,6 +549,7 @@ mod tests {
                         confidence_ba: 0.5,
                         total_a: 4,
                         total_b: 4,
+                        lift: 1.0,
                     });
                 }
                 let mut fa: FxHashMap<String, FxHashMap<String, u32>> = FxHashMap::default();
