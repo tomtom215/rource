@@ -190,6 +190,7 @@ impl Rource {
         self.drag_start_y = y;
         self.mouse_x = x;
         self.mouse_y = y;
+        self.wake_renderer();
 
         let screen_pos = Vec2::new(x, y);
         let world_pos = self.camera.screen_to_world(screen_pos);
@@ -254,6 +255,7 @@ impl Rource {
         self.drag_target = None;
         self.drag_offset = Vec2::ZERO;
         self.drag_last_pos = Vec2::ZERO;
+        self.wake_renderer();
     }
 
     /// Handles mouse move events.
@@ -267,6 +269,8 @@ impl Rource {
         if !self.mouse_down {
             return;
         }
+
+        self.wake_renderer();
 
         let screen_pos = Vec2::new(x, y);
         let world_pos = self.camera.screen_to_world(screen_pos);
@@ -328,6 +332,7 @@ impl Rource {
         let clamped_delta = normalized_delta.clamp(-2.0, 2.0);
         let factor = 1.0 - (clamped_delta * 0.08);
         self.zoom_toward(mouse_x, mouse_y, factor);
+        // wake_renderer() called by zoom_toward()
     }
 
     /// Handles keyboard events.
@@ -352,7 +357,10 @@ impl Rource {
             "ArrowLeft" => self.pan(-50.0, 0.0),
             "ArrowRight" => self.pan(50.0, 0.0),
             "r" | "R" => self.reset_camera(),
-            "l" | "L" => self.show_labels = !self.show_labels,
+            "l" | "L" => {
+                self.show_labels = !self.show_labels;
+                self.wake_renderer();
+            }
             "[" => self.set_speed(self.settings.playback.seconds_per_day * 0.5),
             "]" => self.set_speed(self.settings.playback.seconds_per_day * 2.0),
             "," | "<" => self.step_backward(),

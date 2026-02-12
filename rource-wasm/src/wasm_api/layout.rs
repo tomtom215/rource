@@ -152,6 +152,7 @@ impl Rource {
         // Also update the scene's layout config
         self.scene
             .configure_layout_for_repo(file_count, max_depth, dir_count);
+        self.wake_renderer();
     }
 
     /// Sets the layout preset for different repository sizes.
@@ -178,6 +179,7 @@ impl Rource {
 
         self.settings.layout = layout_settings;
         self.scene.set_layout_config(layout_config);
+        self.wake_renderer();
     }
 
     /// Sets the radial distance scale for directory positioning.
@@ -194,6 +196,7 @@ impl Rource {
         self.settings.layout.radial_distance_scale = scale.clamp(40.0, 500.0);
         let config = LayoutConfig::from_settings(&self.settings.layout);
         self.scene.set_layout_config(config);
+        self.wake_renderer();
     }
 
     /// Sets the depth distance exponent for non-linear depth scaling.
@@ -210,6 +213,7 @@ impl Rource {
         self.settings.layout.depth_distance_exponent = exponent.clamp(0.5, 2.0);
         let config = LayoutConfig::from_settings(&self.settings.layout);
         self.scene.set_layout_config(config);
+        self.wake_renderer();
     }
 
     /// Sets the branch depth fade rate.
@@ -224,6 +228,7 @@ impl Rource {
     #[wasm_bindgen(js_name = setBranchDepthFade)]
     pub fn set_branch_depth_fade(&mut self, fade: f32) {
         self.settings.layout.branch_depth_fade = fade.clamp(0.0, 1.0);
+        self.wake_renderer();
     }
 
     /// Sets the maximum branch opacity.
@@ -238,6 +243,7 @@ impl Rource {
     #[wasm_bindgen(js_name = setBranchOpacityMax)]
     pub fn set_branch_opacity_max(&mut self, opacity: f32) {
         self.settings.layout.branch_opacity_max = opacity.clamp(0.0, 1.0);
+        self.wake_renderer();
     }
 
     /// Gets the current layout configuration as a JSON string.

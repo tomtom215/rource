@@ -87,11 +87,8 @@ export function setupCleanupHandler() {
         }
     });
 
-    document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'hidden') {
-            console.log('Rource: Page hidden');
-        }
-    });
+    // Page Visibility handling is done in window-events.js (Level 1 power management).
+    // It stops the animation loop when the tab is hidden and restores it when visible.
 }
 
 /**

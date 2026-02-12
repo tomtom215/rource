@@ -32,6 +32,7 @@ impl Rource {
         self.auto_fit = false; // User is taking manual control
         let new_zoom = (self.camera.zoom() * factor).clamp(AUTO_FIT_MIN_ZOOM, 1000.0);
         self.camera.set_zoom(new_zoom);
+        self.wake_renderer();
     }
 
     /// Zooms the camera toward a specific screen point.
@@ -54,6 +55,7 @@ impl Rource {
         let diff = world_before - world_after;
         let new_pos = self.camera.position() + diff;
         self.camera.jump_to(new_pos);
+        self.wake_renderer();
     }
 
     /// Pans the camera by the given delta in screen pixels.
@@ -63,12 +65,14 @@ impl Rource {
         let world_delta = Vec2::new(dx, dy) / self.camera.zoom();
         let new_pos = self.camera.position() - world_delta;
         self.camera.jump_to(new_pos);
+        self.wake_renderer();
     }
 
     /// Resets the camera to fit all content.
     #[wasm_bindgen(js_name = resetCamera)]
     pub fn reset_camera(&mut self) {
         self.fit_camera_to_content();
+        self.wake_renderer();
     }
 
     /// Resizes the canvas and renderer.
@@ -83,6 +87,7 @@ impl Rource {
         self.camera.set_zoom_limits(AUTO_FIT_MIN_ZOOM, 1000.0);
         self.settings.display.width = width;
         self.settings.display.height = height;
+        self.wake_renderer();
     }
 
     /// Returns the current zoom level.
@@ -123,6 +128,7 @@ impl Rource {
     pub fn restore_camera_state(&mut self, x: f32, y: f32, zoom: f32) {
         self.camera.jump_to(Vec2::new(x, y));
         self.camera.set_zoom(zoom);
+        self.wake_renderer();
     }
 
     /// Enables or disables auto-fit mode.
@@ -135,6 +141,7 @@ impl Rource {
     #[wasm_bindgen(js_name = setAutoFit)]
     pub fn set_auto_fit(&mut self, enabled: bool) {
         self.auto_fit = enabled;
+        self.wake_renderer();
     }
 
     /// Returns whether auto-fit mode is currently enabled.

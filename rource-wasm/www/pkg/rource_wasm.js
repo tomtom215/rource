@@ -3365,6 +3365,18 @@ export class Rource {
         wasm.rource_togglePlay(this.__wbg_ptr);
     }
     /**
+     * Resets the render cooldown to ensure the next `frame()` calls `render()`.
+     *
+     * Called by WASM API methods that change visual state (camera, settings,
+     * input, playback) so the GPU render phase is not skipped while the user
+     * is interacting with the visualization.
+     *
+     * Part of Level 3 power management: dirty-flag rendering.
+     */
+    wakeRenderer() {
+        wasm.rource_wakeRenderer(this.__wbg_ptr);
+    }
+    /**
      * Warms up the GPU visibility culling compute pipeline.
      *
      * Call this during initialization to pre-compile compute shaders
@@ -4498,7 +4510,7 @@ function __wbg_get_imports() {
                     const a = state0.a;
                     state0.a = 0;
                     try {
-                        return __wasm_bindgen_func_elem_7946(a, state0.b, arg0, arg1);
+                        return __wasm_bindgen_func_elem_7947(a, state0.b, arg0, arg1);
                     } finally {
                         state0.a = a;
                     }
@@ -5488,7 +5500,7 @@ function __wbg_get_imports() {
         }, arguments); },
         __wbindgen_cast_0000000000000001: function(arg0, arg1) {
             // Cast intrinsic for `Closure(Closure { dtor_idx: 801, function: Function { arguments: [Externref], shim_idx: 802, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, wasm.__wasm_bindgen_func_elem_3198, __wasm_bindgen_func_elem_3199);
+            const ret = makeMutClosure(arg0, arg1, wasm.__wasm_bindgen_func_elem_3199, __wasm_bindgen_func_elem_3200);
             return addHeapObject(ret);
         },
         __wbindgen_cast_0000000000000002: function(arg0) {
@@ -5550,12 +5562,12 @@ function __wbg_get_imports() {
     };
 }
 
-function __wasm_bindgen_func_elem_3199(arg0, arg1, arg2) {
-    wasm.__wasm_bindgen_func_elem_3199(arg0, arg1, addHeapObject(arg2));
+function __wasm_bindgen_func_elem_3200(arg0, arg1, arg2) {
+    wasm.__wasm_bindgen_func_elem_3200(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wasm_bindgen_func_elem_7946(arg0, arg1, arg2, arg3) {
-    wasm.__wasm_bindgen_func_elem_7946(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
+function __wasm_bindgen_func_elem_7947(arg0, arg1, arg2, arg3) {
+    wasm.__wasm_bindgen_func_elem_7947(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
 

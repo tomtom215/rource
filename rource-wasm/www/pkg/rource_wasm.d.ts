@@ -1825,6 +1825,16 @@ export class Rource {
      */
     togglePlay(): void;
     /**
+     * Resets the render cooldown to ensure the next `frame()` calls `render()`.
+     *
+     * Called by WASM API methods that change visual state (camera, settings,
+     * input, playback) so the GPU render phase is not skipped while the user
+     * is interacting with the visualization.
+     *
+     * Part of Level 3 power management: dirty-flag rendering.
+     */
+    wakeRenderer(): void;
+    /**
      * Warms up the GPU visibility culling compute pipeline.
      *
      * Call this during initialization to pre-compile compute shaders
@@ -2075,6 +2085,7 @@ export interface InitOutput {
     readonly rource_stepBackward: (a: number) => void;
     readonly rource_stepForward: (a: number) => void;
     readonly rource_togglePlay: (a: number) => void;
+    readonly rource_wakeRenderer: (a: number) => void;
     readonly rource_warmupGPUCulling: (a: number) => void;
     readonly rource_warmupGPUPhysics: (a: number) => void;
     readonly rource_wasCommitsTruncated: (a: number) => number;
@@ -2082,9 +2093,9 @@ export interface InitOutput {
     readonly rource_zoomToward: (a: number, b: number, c: number, d: number) => void;
     readonly init_panic_hook: () => void;
     readonly rource_isTracingEnabled: (a: number) => number;
-    readonly __wasm_bindgen_func_elem_3198: (a: number, b: number) => void;
-    readonly __wasm_bindgen_func_elem_7946: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_3199: (a: number, b: number, c: number) => void;
+    readonly __wasm_bindgen_func_elem_3199: (a: number, b: number) => void;
+    readonly __wasm_bindgen_func_elem_7947: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_3200: (a: number, b: number, c: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;

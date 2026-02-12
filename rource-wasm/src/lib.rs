@@ -152,6 +152,15 @@ pub const MAX_FRAME_DT: f32 = 0.1;
 /// At 60fps, 100 commits/frame = 6000 commits/second max throughput.
 pub const MAX_COMMITS_PER_FRAME: usize = 100;
 
+/// Frames to keep rendering after the last visual-state change.
+///
+/// After playback ends and action beams fade, physics forces still settle entities
+/// for ~1–2 seconds, and camera deceleration takes ~0.5 seconds. A 5-second
+/// cooldown (300 frames at 60 FPS) covers all settling with comfortable margin.
+/// Once the cooldown expires, `frame()` skips the GPU render phase entirely,
+/// reducing GPU utilization to zero until the next user interaction.
+const RENDER_COOLDOWN_FRAMES: u32 = 300;
+
 /// Minimum simulation delta time to prevent clock aliasing at extreme FPS.
 ///
 /// At >2K FPS, browser timer resolution (~5 µs in Chrome) becomes comparable
@@ -533,6 +542,18 @@ pub struct Rource {
     /// Original commit count before truncation (for reporting).
     original_commit_count: usize,
 
+    /// Render cooldown counter for dirty-flag rendering (Level 3 power management).
+    ///
+    /// Counts down from [`RENDER_COOLDOWN_FRAMES`] after the last visual-state
+    /// change. While > 0, `frame()` calls `render()`. When 0, the GPU render
+    /// phase is skipped entirely, reducing GPU utilization to zero.
+    ///
+    /// Reset to [`RENDER_COOLDOWN_FRAMES`] by:
+    /// - Active playback or action beams (automatic in `frame()`)
+    /// - User interaction (camera, input, settings — via `wake_renderer()`)
+    /// - Data loading, resize, or any visual-state change
+    render_cooldown: u32,
+
     /// Zero-copy stats buffer for WASM-to-JS data transfer.
     ///
     /// JS reads this buffer directly from WASM linear memory via
@@ -692,6 +713,8 @@ impl Rource {
             max_commits: DEFAULT_MAX_COMMITS,
             commits_truncated: false,
             original_commit_count: 0,
+            // Render cooldown (start active so first frames render immediately)
+            render_cooldown: RENDER_COOLDOWN_FRAMES,
             // Zero-copy stats buffer (128 bytes, read directly by JS)
             stats_buffer: [0.0_f32; 32],
         })
@@ -890,6 +913,7 @@ impl Rource {
         let count = commits.len();
         self.commits = commits;
         self.reset_playback_adaptive();
+        self.render_cooldown = RENDER_COOLDOWN_FRAMES;
         count
     }
 
@@ -1062,10 +1086,28 @@ impl Rource {
 
         self.frame_profiler.end_phase("scene_update");
 
-        // ---- Render Phase ----
-        self.frame_profiler.begin_phase("render");
-        self.render();
-        self.frame_profiler.end_phase("render");
+        // ---- Dirty-Flag Rendering (Level 3 Power Management) ----
+        //
+        // Determine if the scene has visual activity that requires GPU rendering.
+        // When activity ceases, a cooldown timer counts down. Once it reaches zero,
+        // the expensive render() call is skipped entirely, reducing GPU utilization
+        // to zero while the animation loop continues (for stats buffer updates).
+        let has_visual_activity = self.playback.is_playing()
+            || self.playback.current_commit() < self.commits.len()
+            || self.scene.active_action_count() > 0;
+
+        if has_visual_activity {
+            self.render_cooldown = RENDER_COOLDOWN_FRAMES;
+        }
+
+        if self.render_cooldown > 0 {
+            // ---- Render Phase ----
+            self.frame_profiler.begin_phase("render");
+            self.render();
+            self.frame_profiler.end_phase("render");
+
+            self.render_cooldown -= 1;
+        }
 
         // End frame profiling
         self.frame_profiler.end_frame();
@@ -1095,8 +1137,9 @@ impl Rource {
         self.stats_buffer[18] = world_pos.x;
         self.stats_buffer[19] = world_pos.y;
 
-        // Return true if there's more to show
-        self.playback.is_playing() || self.playback.current_commit() < self.commits.len()
+        // Return true if there's visual activity or cooldown is still running.
+        // JS uses this to detect when the scene is fully idle.
+        has_visual_activity || self.render_cooldown > 0
     }
 
     /// Forces a render without updating simulation.
@@ -1121,6 +1164,19 @@ impl Rource {
 
         self.render();
         self.backend.sync();
+        self.render_cooldown = RENDER_COOLDOWN_FRAMES;
+    }
+
+    /// Resets the render cooldown to ensure the next `frame()` calls `render()`.
+    ///
+    /// Called by WASM API methods that change visual state (camera, settings,
+    /// input, playback) so the GPU render phase is not skipped while the user
+    /// is interacting with the visualization.
+    ///
+    /// Part of Level 3 power management: dirty-flag rendering.
+    #[wasm_bindgen(js_name = wakeRenderer)]
+    pub fn wake_renderer(&mut self) {
+        self.render_cooldown = RENDER_COOLDOWN_FRAMES;
     }
 }
 
