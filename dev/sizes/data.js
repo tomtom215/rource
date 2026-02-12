@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770909055466,
+  "lastUpdate": 1770922420791,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -6551,6 +6551,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1373277,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fb7ce2e539c45dbdb1cf9714c4dce4f1491721ac",
+          "message": "Merge pull request #297 from tomtom215/claude/academic-research-implementation-ZlAWG\n\nAdd 8 research-backed software engineering insights modules",
+          "timestamp": "2026-02-12T19:51:01+01:00",
+          "tree_id": "9196d64e560f69de8931f875d17143eca543977d",
+          "url": "https://github.com/tomtom215/rource/commit/fb7ce2e539c45dbdb1cf9714c4dce4f1491721ac"
+        },
+        "date": 1770922420095,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3912280,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3794422,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1405749,
             "unit": "bytes"
           }
         ]
