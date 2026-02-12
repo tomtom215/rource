@@ -291,7 +291,7 @@ export function getCommitDirectoryCount() {
 // ============================================================
 // Repository Insights API
 //
-// Wrappers for the 21 insights analysis methods.
+// Wrappers for the 25 insights analysis methods.
 // All methods return parsed JSON objects (or null/[] on failure).
 // Insights are computed from commit history, not per-frame data.
 // ============================================================
@@ -317,7 +317,7 @@ function parseInsightsJson(methodName, json, defaultValue) {
 
 /**
  * Returns the full insights report for the loaded repository.
- * Contains all 20 research-backed metrics in a single response.
+ * Contains all 25 research-backed metrics in a single response.
  * @returns {Object|null} Complete InsightsReport or null if no commits loaded
  */
 export function getInsights() {
@@ -587,6 +587,62 @@ export function getFileSurvival() {
     if (rource) {
         const json = safeWasmCall('getFileSurvival', () => rource.getFileSurvival(), null);
         return parseInsightsJson('getFileSurvival', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns developer experience scores (Mockus & Votta 2000, Eyolfson et al. 2014).
+ * Experience = tenure_days * ln(1 + commits) * file_familiarity.
+ * @returns {Object|null} Developer experience data with per-developer scores
+ */
+export function getDeveloperExperience() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getDeveloperExperience', () => rource.getDeveloperExperience(), null);
+        return parseInsightsJson('getDeveloperExperience', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns per-file ownership fragmentation / Gini coefficient (Bird et al. 2011).
+ * Measures how unevenly commit ownership is distributed across contributors per file.
+ * @returns {Object|null} Ownership fragmentation data with per-file Gini coefficients
+ */
+export function getOwnershipFragmentation() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getOwnershipFragmentation', () => rource.getOwnershipFragmentation(), null);
+        return parseInsightsJson('getOwnershipFragmentation', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns release rhythm analysis (Khomh et al. 2012, da Costa et al. 2016).
+ * Analyzes commit velocity patterns to detect release cycles and regularity.
+ * @returns {Object|null} Release rhythm data with regularity, phase, trend
+ */
+export function getReleaseRhythm() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getReleaseRhythm', () => rource.getReleaseRhythm(), null);
+        return parseInsightsJson('getReleaseRhythm', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns per-directory knowledge distribution entropy (Constantinou & Mens 2017).
+ * Shannon entropy of contributor distribution per directory, normalized by log2(n).
+ * @returns {Object|null} Knowledge distribution data with per-directory entropy
+ */
+export function getKnowledgeDistribution() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getKnowledgeDistribution', () => rource.getKnowledgeDistribution(), null);
+        return parseInsightsJson('getKnowledgeDistribution', json, null);
     }
     return null;
 }
