@@ -20,8 +20,8 @@ import {
  *   path, totalChanges, score (also: weightedChanges, creates, modifies, deletes)
  */
 export function renderHotspotsTable(hotspots) {
-    const visible = hotspots.slice(0, 10);
-    const hidden = hotspots.slice(10);
+    const visible = hotspots.slice(0, 5);
+    const hidden = hotspots.slice(5);
     let html = `<div class="insights-table-wrap">
         <table class="insights-table">
             <thead><tr>
@@ -58,8 +58,8 @@ export function renderHotspotsTable(hotspots) {
  */
 export function renderBusFactorTable(busFactors) {
     const sorted = [...busFactors].sort((a, b) => a.busFactor - b.busFactor);
-    const visible = sorted.slice(0, 10);
-    const hidden = sorted.slice(10);
+    const visible = sorted.slice(0, 5);
+    const hidden = sorted.slice(5);
     let html = `<div class="insights-table-wrap">
         <table class="insights-table">
             <thead><tr>
@@ -98,7 +98,8 @@ export function renderBusFactorTable(busFactors) {
  */
 export function renderBurstsTable(files) {
     const sorted = [...files].sort((a, b) => (b.burstCount || 0) - (a.burstCount || 0));
-    const visible = sorted.slice(0, 10);
+    const visible = sorted.slice(0, 5);
+    const hidden = sorted.slice(5);
     let html = `<div class="insights-table-wrap">
         <table class="insights-table">
             <thead><tr>
@@ -114,7 +115,17 @@ export function renderBurstsTable(files) {
             <td class="num">${formatNumber(f.riskScore, 2)}</td>
         </tr>`;
     }
+    for (const f of hidden) {
+        html += `<tr class="insights-hidden-row">
+            <td class="filepath" title="${escapeHtml(f.path || '')}">${escapeHtml(truncatePath(f.path || ''))}</td>
+            <td class="num">${formatInt(f.burstCount || 0)}</td>
+            <td class="num">${formatNumber(f.riskScore, 2)}</td>
+        </tr>`;
+    }
     html += '</tbody></table></div>';
+    if (hidden.length > 0) {
+        html += `<button type="button" class="insights-show-all">Show all (${sorted.length})</button>`;
+    }
     return html;
 }
 
@@ -124,7 +135,8 @@ export function renderBurstsTable(files) {
  *   path, entropy (JSON key), isSilo, primaryOwner, contributorCount
  */
 export function renderKnowledgeTable(silos) {
-    const visible = silos.slice(0, 10);
+    const visible = silos.slice(0, 5);
+    const hidden = silos.slice(5);
     let html = `<div class="insights-table-wrap">
         <table class="insights-table">
             <thead><tr>
@@ -140,7 +152,17 @@ export function renderKnowledgeTable(silos) {
             <td>${escapeHtml(s.primaryOwner || 'N/A')}</td>
         </tr>`;
     }
+    for (const s of hidden) {
+        html += `<tr class="insights-hidden-row">
+            <td class="filepath" title="${escapeHtml(s.path || '')}">${escapeHtml(truncatePath(s.path || ''))}</td>
+            <td class="num">${formatNumber(s.entropy, 3)}</td>
+            <td>${escapeHtml(s.primaryOwner || 'N/A')}</td>
+        </tr>`;
+    }
     html += '</tbody></table></div>';
+    if (hidden.length > 0) {
+        html += `<button type="button" class="insights-show-all">Show all (${silos.length})</button>`;
+    }
     return html;
 }
 
@@ -150,8 +172,8 @@ export function renderKnowledgeTable(silos) {
  *   fileA, fileB, support (also: confidenceAB, confidenceBA)
  */
 export function renderCouplingTable(couplings) {
-    const visible = couplings.slice(0, 10);
-    const hidden = couplings.slice(10);
+    const visible = couplings.slice(0, 5);
+    const hidden = couplings.slice(5);
     let html = `<div class="insights-table-wrap">
         <table class="insights-table">
             <thead><tr>
@@ -188,7 +210,8 @@ export function renderCouplingTable(couplings) {
  */
 export function renderProfilesTable(devs) {
     const sorted = [...devs].sort((a, b) => (b.commitCount || 0) - (a.commitCount || 0));
-    const visible = sorted.slice(0, 10);
+    const visible = sorted.slice(0, 5);
+    const hidden = sorted.slice(5);
     let html = `<div class="insights-table-wrap">
         <table class="insights-table">
             <thead><tr>
@@ -204,7 +227,17 @@ export function renderProfilesTable(devs) {
             <td class="num">${formatInt(d.commitCount || 0)}</td>
         </tr>`;
     }
+    for (const d of hidden) {
+        html += `<tr class="insights-hidden-row">
+            <td>${escapeHtml(d.author || '')}</td>
+            <td><span class="insights-badge insights-badge-${(d.classification || 'unknown').toLowerCase()}">${escapeHtml(d.classification || 'Unknown')}</span></td>
+            <td class="num">${formatInt(d.commitCount || 0)}</td>
+        </tr>`;
+    }
     html += '</tbody></table></div>';
+    if (hidden.length > 0) {
+        html += `<button type="button" class="insights-show-all">Show all (${sorted.length})</button>`;
+    }
     return html;
 }
 
@@ -216,7 +249,8 @@ export function renderProfilesTable(devs) {
  */
 export function renderCadenceTable(devs) {
     const sorted = [...devs].sort((a, b) => (b.commitCount || 0) - (a.commitCount || 0));
-    const visible = sorted.slice(0, 10);
+    const visible = sorted.slice(0, 5);
+    const hidden = sorted.slice(5);
     let html = `<div class="insights-table-wrap">
         <table class="insights-table">
             <thead><tr>
@@ -233,7 +267,18 @@ export function renderCadenceTable(devs) {
             <td class="num">${intervalDays != null ? formatNumber(intervalDays, 1) + ' days' : 'N/A'}</td>
         </tr>`;
     }
+    for (const d of hidden) {
+        const intervalDays = d.meanInterval != null ? (d.meanInterval / 86400) : null;
+        html += `<tr class="insights-hidden-row">
+            <td>${escapeHtml(d.author || '')}</td>
+            <td>${escapeHtml(capitalize(d.cadenceType || 'N/A'))}</td>
+            <td class="num">${intervalDays != null ? formatNumber(intervalDays, 1) + ' days' : 'N/A'}</td>
+        </tr>`;
+    }
     html += '</tbody></table></div>';
+    if (hidden.length > 0) {
+        html += `<button type="button" class="insights-show-all">Show all (${sorted.length})</button>`;
+    }
     return html;
 }
 
@@ -244,7 +289,8 @@ export function renderCadenceTable(devs) {
  */
 export function renderFocusTable(devs) {
     const sorted = [...devs].sort((a, b) => (b.focusScore || 0) - (a.focusScore || 0));
-    const visible = sorted.slice(0, 10);
+    const visible = sorted.slice(0, 5);
+    const hidden = sorted.slice(5);
     let html = `<div class="insights-table-wrap">
         <table class="insights-table">
             <thead><tr>
@@ -260,7 +306,17 @@ export function renderFocusTable(devs) {
             <td class="num">${formatInt(d.directoriesTouched || 0)}</td>
         </tr>`;
     }
+    for (const d of hidden) {
+        html += `<tr class="insights-hidden-row">
+            <td>${escapeHtml(d.author || '')}</td>
+            <td class="num">${formatNumber(d.focusScore, 3)}</td>
+            <td class="num">${formatInt(d.directoriesTouched || 0)}</td>
+        </tr>`;
+    }
     html += '</tbody></table></div>';
+    if (hidden.length > 0) {
+        html += `<button type="button" class="insights-show-all">Show all (${sorted.length})</button>`;
+    }
     return html;
 }
 
@@ -271,8 +327,8 @@ export function renderFocusTable(devs) {
  */
 export function renderExperienceTable(devs) {
     const sorted = [...devs].sort((a, b) => (b.experienceScore || 0) - (a.experienceScore || 0));
-    const visible = sorted.slice(0, 10);
-    const hidden = sorted.slice(10);
+    const visible = sorted.slice(0, 5);
+    const hidden = sorted.slice(5);
     let html = `<div class="insights-table-wrap">
         <table class="insights-table">
             <thead><tr>
@@ -312,8 +368,8 @@ export function renderExperienceTable(devs) {
  */
 export function renderOwnershipTable(files) {
     const sorted = [...files].sort((a, b) => (b.giniCoefficient || 0) - (a.giniCoefficient || 0));
-    const visible = sorted.slice(0, 10);
-    const hidden = sorted.slice(10);
+    const visible = sorted.slice(0, 5);
+    const hidden = sorted.slice(5);
     let html = `<div class="insights-table-wrap">
         <table class="insights-table">
             <thead><tr>
@@ -351,8 +407,8 @@ export function renderOwnershipTable(files) {
  */
 export function renderKnowledgeDistributionTable(dirs) {
     const sorted = [...dirs].sort((a, b) => (a.normalizedEntropy || 0) - (b.normalizedEntropy || 0));
-    const visible = sorted.slice(0, 10);
-    const hidden = sorted.slice(10);
+    const visible = sorted.slice(0, 5);
+    const hidden = sorted.slice(5);
     let html = `<div class="insights-table-wrap">
         <table class="insights-table">
             <thead><tr>
@@ -393,8 +449,8 @@ export function renderKnowledgeDistributionTable(dirs) {
  */
 export function renderChurnVolatilityTable(files) {
     const sorted = [...files].sort((a, b) => (b.cv || 0) - (a.cv || 0));
-    const visible = sorted.slice(0, 10);
-    const hidden = sorted.slice(10);
+    const visible = sorted.slice(0, 5);
+    const hidden = sorted.slice(5);
     let html = `<div class="insights-table-wrap">
         <table class="insights-table">
             <thead><tr>
@@ -435,8 +491,8 @@ export function renderChurnVolatilityTable(files) {
  */
 export function renderTruckFactorTable(devs) {
     const sorted = [...devs].sort((a, b) => (b.totalDoa || 0) - (a.totalDoa || 0));
-    const visible = sorted.slice(0, 10);
-    const hidden = sorted.slice(10);
+    const visible = sorted.slice(0, 5);
+    const hidden = sorted.slice(5);
     let html = `<div class="insights-table-wrap">
         <table class="insights-table">
             <thead><tr>
@@ -477,8 +533,8 @@ export function renderTruckFactorTable(devs) {
  */
 export function renderTurnoverImpactTable(devs) {
     const sorted = [...devs].sort((a, b) => (b.impactScore || 0) - (a.impactScore || 0));
-    const visible = sorted.slice(0, 10);
-    const hidden = sorted.slice(10);
+    const visible = sorted.slice(0, 5);
+    const hidden = sorted.slice(5);
     let html = `<div class="insights-table-wrap">
         <table class="insights-table">
             <thead><tr>
@@ -519,8 +575,8 @@ export function renderTurnoverImpactTable(devs) {
  */
 export function renderCommitComplexityTable(commits) {
     const sorted = [...commits].sort((a, b) => (b.complexityScore || 0) - (a.complexityScore || 0));
-    const visible = sorted.slice(0, 10);
-    const hidden = sorted.slice(10, 50);
+    const visible = sorted.slice(0, 5);
+    const hidden = sorted.slice(5, 50);
     let html = `<div class="insights-table-wrap">
         <table class="insights-table">
             <thead><tr>
@@ -564,8 +620,8 @@ export function renderCommitComplexityTable(commits) {
  */
 export function renderDefectPatternsTable(files) {
     const sorted = [...files].sort((a, b) => (b.score || 0) - (a.score || 0));
-    const visible = sorted.slice(0, 10);
-    const hidden = sorted.slice(10);
+    const visible = sorted.slice(0, 5);
+    const hidden = sorted.slice(5);
     let html = `<div class="insights-table-wrap">
         <table class="insights-table">
             <thead><tr>
@@ -605,8 +661,8 @@ export function renderDefectPatternsTable(files) {
  *   name, fileCount, percentage, extensions
  */
 export function renderTechDistributionTable(languages) {
-    const visible = languages.slice(0, 10);
-    const hidden = languages.slice(10);
+    const visible = languages.slice(0, 5);
+    const hidden = languages.slice(5);
     let html = `<div class="insights-table-wrap">
         <table class="insights-table">
             <thead><tr>
@@ -694,8 +750,8 @@ export function renderActivityHeatmapTable(heatmap) {
  */
 export function renderTechExpertiseTable(developers) {
     const sorted = [...developers].sort((a, b) => (b.totalCommits || 0) - (a.totalCommits || 0));
-    const visible = sorted.slice(0, 10);
-    const hidden = sorted.slice(10);
+    const visible = sorted.slice(0, 5);
+    const hidden = sorted.slice(5);
     let html = `<div class="insights-table-wrap">
         <table class="insights-table">
             <thead><tr>

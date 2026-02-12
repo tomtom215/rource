@@ -322,23 +322,8 @@
                 </button>
             </div>
 
-            <!-- Summary Cards Row — each card navigates to its corresponding tab -->
+            <!-- Summary Cards Row — ordered left-to-right matching tab order below -->
             <div class="analytics-summary-row" id="analytics-summary-row" role="group" aria-label="Repository metrics summary">
-                <button type="button" class="analytics-card analytics-card-interactive" id="acard-commits" data-navigate-tab="quality" aria-label="View quality metrics">
-                    <span class="analytics-card-value" id="acard-commits-value">--</span>
-                    <span class="analytics-card-label">Commits</span>
-                    <span class="analytics-card-hint">Work type mix</span>
-                </button>
-                <button type="button" class="analytics-card analytics-card-interactive" id="acard-files" data-navigate-tab="temporal" aria-label="View temporal metrics">
-                    <span class="analytics-card-value" id="acard-files-value">--</span>
-                    <span class="analytics-card-label">Files</span>
-                    <span class="analytics-card-hint">Growth &amp; lifecycle</span>
-                </button>
-                <button type="button" class="analytics-card analytics-card-interactive" id="acard-authors" data-navigate-tab="team" aria-label="View team metrics">
-                    <span class="analytics-card-value" id="acard-authors-value">--</span>
-                    <span class="analytics-card-label">Authors</span>
-                    <span class="analytics-card-hint">Profiles &amp; cadence</span>
-                </button>
                 <button type="button" class="analytics-card analytics-card-interactive" id="acard-hotspots" data-navigate-tab="hotspots" aria-label="View hotspot details">
                     <span class="analytics-card-value" id="acard-hotspots-value">--</span>
                     <span class="analytics-card-label">Hotspots</span>
@@ -348,6 +333,21 @@
                     <span class="analytics-card-value" id="acard-risk-value">--</span>
                     <span class="analytics-card-label">At Risk</span>
                     <span class="analytics-card-hint">Bus factor &amp; silos</span>
+                </button>
+                <button type="button" class="analytics-card analytics-card-interactive" id="acard-authors" data-navigate-tab="team" aria-label="View team metrics">
+                    <span class="analytics-card-value" id="acard-authors-value">--</span>
+                    <span class="analytics-card-label">Authors</span>
+                    <span class="analytics-card-hint">Profiles &amp; cadence</span>
+                </button>
+                <button type="button" class="analytics-card analytics-card-interactive" id="acard-files" data-navigate-tab="temporal" aria-label="View temporal metrics">
+                    <span class="analytics-card-value" id="acard-files-value">--</span>
+                    <span class="analytics-card-label">Files</span>
+                    <span class="analytics-card-hint">Growth &amp; lifecycle</span>
+                </button>
+                <button type="button" class="analytics-card analytics-card-interactive" id="acard-commits" data-navigate-tab="quality" aria-label="View quality metrics">
+                    <span class="analytics-card-value" id="acard-commits-value">--</span>
+                    <span class="analytics-card-label">Commits</span>
+                    <span class="analytics-card-hint">Work type mix</span>
                 </button>
             </div>
 

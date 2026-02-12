@@ -400,6 +400,35 @@ function renderTabInto(tabName, target) {
             }
         });
     });
+
+    // Wire up info tooltip toggles
+    body.querySelectorAll('.insights-info-btn').forEach(btn => {
+        addManagedEventListener(btn, 'click', () => {
+            const infoPanel = btn.closest('.insights-metric-header').nextElementSibling;
+            if (infoPanel && infoPanel.classList.contains('insights-info-panel')) {
+                const isOpen = !infoPanel.hidden;
+                infoPanel.hidden = isOpen;
+                btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+            }
+        });
+    });
+
+    // Wire up metric quick-nav pill buttons
+    body.querySelectorAll('.insights-metric-pill').forEach(pill => {
+        addManagedEventListener(pill, 'click', () => {
+            const targetId = pill.dataset.target;
+            const targetEl = document.getElementById(targetId);
+            if (targetEl) {
+                targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                // Highlight active pill briefly
+                const nav = pill.closest('.insights-metric-nav');
+                if (nav) {
+                    nav.querySelectorAll('.insights-metric-pill').forEach(p => p.classList.remove('active'));
+                }
+                pill.classList.add('active');
+            }
+        });
+    });
 }
 
 function renderTab(tabName) {
