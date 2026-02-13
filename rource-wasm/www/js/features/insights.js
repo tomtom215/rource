@@ -38,12 +38,15 @@ import {
     getReviewerRecommendation, getReviewResponse, getOnboardingVelocity,
     getInterfaceStability, getTechDebtVelocity, getFocusDrift,
     getAiChangeDetection, getKnowledgeGini, getExpertiseProfile,
-    getCognitiveLoad
+    getCognitiveLoad,
+    getDoraProxy, getKnowledgeCurrency, getTeamRhythm,
+    getCommitCoherence, getMarkovPrediction, getRepoHealth
 } from '../wasm-api.js';
 import { formatInt, escapeHtml } from './insights-utils.js';
 import {
     renderHotspotsTab, renderRiskTab, renderTeamTab,
-    renderTemporalTab, renderQualityTab, renderIntelligenceTab
+    renderTemporalTab, renderQualityTab, renderIntelligenceTab,
+    renderStrategicTab
 } from './insights-renderers.js';
 
 // Module state
@@ -287,6 +290,14 @@ function ensureTabData(tabName) {
             if (!cachedData.expertiseProfile) cachedData.expertiseProfile = unwrap(getExpertiseProfile(), 'expertiseProfile');
             if (!cachedData.cognitiveLoad) cachedData.cognitiveLoad = unwrap(getCognitiveLoad(), 'cognitiveLoad');
             break;
+        case 'strategic':
+            if (!cachedData.doraProxy) cachedData.doraProxy = unwrap(getDoraProxy(), 'doraProxy');
+            if (!cachedData.knowledgeCurrencyData) cachedData.knowledgeCurrencyData = unwrap(getKnowledgeCurrency(), 'knowledgeCurrency');
+            if (!cachedData.teamRhythmData) cachedData.teamRhythmData = unwrap(getTeamRhythm(), 'teamRhythm');
+            if (!cachedData.commitCoherenceData) cachedData.commitCoherenceData = unwrap(getCommitCoherence(), 'commitCoherence');
+            if (!cachedData.markovPrediction) cachedData.markovPrediction = unwrap(getMarkovPrediction(), 'markovPrediction');
+            if (!cachedData.repoHealth) cachedData.repoHealth = unwrap(getRepoHealth(), 'repoHealth');
+            break;
     }
 }
 
@@ -416,6 +427,9 @@ function renderTabInto(tabName, target) {
             break;
         case 'intelligence':
             body.innerHTML = renderIntelligenceTab(cachedData);
+            break;
+        case 'strategic':
+            body.innerHTML = renderStrategicTab(cachedData);
             break;
     }
 

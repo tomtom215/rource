@@ -150,6 +150,12 @@ pub struct FileMetrics {
     /// Proportion of large-commit appearances followed by fix-up bursts.
     /// Range: 0.0–1.0 (higher = more defect-introducing pattern).
     pub defect_pattern_score: f64,
+
+    // ---- Strategic tab metrics (next-generation git mining insights) ----
+    /// Knowledge currency index (Fritz et al. 2010, Ebbinghaus 1885):
+    /// unified per-file knowledge freshness score.
+    /// Range: 0.0–1.0 (0 = completely stale, 1 = fully current).
+    pub knowledge_currency: f64,
 }
 
 /// Compact lifecycle stage enum for the index.
@@ -194,6 +200,7 @@ impl Default for FileMetrics {
             defect_score: 0.0,
             churn_cv: 0.0,
             defect_pattern_score: 0.0,
+            knowledge_currency: 0.0,
         }
     }
 }
@@ -267,6 +274,15 @@ pub struct UserMetrics {
 
     /// Whether this developer has departed (no commits in last 90 days).
     pub is_departed: bool,
+
+    // ---- Strategic tab metrics (next-generation git mining insights) ----
+    /// Team rhythm type (Fisher 1993, Eyolfson et al. 2011):
+    /// commit hour regularity classification.
+    pub rhythm_type: RhythmTypeCompact,
+
+    /// Mean commit coherence score for this developer (Herzig & Zeller 2013).
+    /// Range: 0.0–1.0 (higher = more atomic, focused commits).
+    pub mean_coherence: f64,
 }
 
 /// Compact contributor classification.
@@ -295,6 +311,19 @@ pub enum CadenceTypeCompact {
     Bursty,
 }
 
+/// Compact rhythm type classification.
+///
+/// Mirrors `team_rhythm::RhythmType` with owned enum.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum RhythmTypeCompact {
+    /// Regular: concentrated commit hours (R̄ > 0.7).
+    Regular,
+    /// Moderate: some regularity (0.3 < R̄ ≤ 0.7).
+    Moderate,
+    /// Irregular: spread across many hours (R̄ ≤ 0.3).
+    Irregular,
+}
+
 impl Default for UserMetrics {
     fn default() -> Self {
         Self {
@@ -315,6 +344,8 @@ impl Default for UserMetrics {
             truck_factor_doa: 0.0,
             sole_expert_count: 0,
             is_departed: false,
+            rhythm_type: RhythmTypeCompact::Moderate,
+            mean_coherence: 1.0,
         }
     }
 }
@@ -492,6 +523,12 @@ impl InsightsIndex {
             fm.defect_pattern_score = dp.score;
         }
 
+        // Knowledge currency (Fritz et al. 2010, Ebbinghaus 1885)
+        for kc in &report.knowledge_currency.files {
+            let fm = files.entry(kc.path.clone()).or_default();
+            fm.knowledge_currency = kc.currency;
+        }
+
         // Defect prediction scores (D'Ambros et al. 2010)
         // Compute from the file metrics we've accumulated so far
         {
@@ -572,6 +609,18 @@ impl InsightsIndex {
         for dep in &report.turnover_impact.departed_developers {
             let um = users.entry(dep.name.clone()).or_default();
             um.is_departed = true;
+        }
+
+        // Team rhythm (Fisher 1993, Eyolfson et al. 2011)
+        for dev in &report.team_rhythm.developers {
+            let um = users.entry(dev.author.clone()).or_default();
+            um.rhythm_type = convert_rhythm_type(dev.rhythm_type);
+        }
+
+        // Commit coherence per developer (Herzig & Zeller 2013)
+        for dc in &report.commit_coherence_score.developer_coherence {
+            let um = users.entry(dc.author.clone()).or_default();
+            um.mean_coherence = dc.mean_coherence;
         }
 
         // ---- Phase 3: Compute summary statistics ----
@@ -708,6 +757,15 @@ fn convert_profile_type(ct: super::profiles::ContributorType) -> ProfileTypeComp
     }
 }
 
+/// Converts the `team_rhythm` module's rhythm type to our compact representation.
+fn convert_rhythm_type(rt: super::team_rhythm::RhythmType) -> RhythmTypeCompact {
+    match rt {
+        super::team_rhythm::RhythmType::Regular => RhythmTypeCompact::Regular,
+        super::team_rhythm::RhythmType::Moderate => RhythmTypeCompact::Moderate,
+        super::team_rhythm::RhythmType::Irregular => RhythmTypeCompact::Irregular,
+    }
+}
+
 /// Converts the cadence module's cadence type to our compact representation.
 fn convert_cadence_type(ct: super::cadence::CadenceType) -> CadenceTypeCompact {
     match ct {
@@ -739,6 +797,16 @@ impl std::fmt::Display for ProfileTypeCompact {
             Self::Core => write!(f, "core"),
             Self::Peripheral => write!(f, "peripheral"),
             Self::DriveBy => write!(f, "drive-by"),
+        }
+    }
+}
+
+impl std::fmt::Display for RhythmTypeCompact {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Regular => write!(f, "regular"),
+            Self::Moderate => write!(f, "moderate"),
+            Self::Irregular => write!(f, "irregular"),
         }
     }
 }

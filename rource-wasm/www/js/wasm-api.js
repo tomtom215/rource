@@ -1118,3 +1118,85 @@ export function getCognitiveLoad() {
     }
     return null;
 }
+
+// ============================================================
+// Strategic tab: next-generation git mining insights
+// ============================================================
+
+/**
+ * Returns DORA proxy metrics (Forsgren et al. 2018).
+ * @returns {Object|null} DORA metrics with merge frequency, revert ratio, etc.
+ */
+export function getDoraProxy() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getDoraProxy', () => rource.getDoraProxy(), null);
+        return parseInsightsJson('getDoraProxy', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns knowledge currency index (Fritz et al. 2010, Ebbinghaus 1885).
+ * @returns {Object|null} Per-file knowledge freshness scores
+ */
+export function getKnowledgeCurrency() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getKnowledgeCurrency', () => rource.getKnowledgeCurrency(), null);
+        return parseInsightsJson('getKnowledgeCurrency', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns team rhythm synchronization (Fisher 1993, Eyolfson et al. 2011).
+ * @returns {Object|null} Circular statistics on commit hour distributions
+ */
+export function getTeamRhythm() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getTeamRhythm', () => rource.getTeamRhythm(), null);
+        return parseInsightsJson('getTeamRhythm', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns commit coherence scoring (Herzig & Zeller 2013).
+ * @returns {Object|null} Per-commit tangled change detection
+ */
+export function getCommitCoherence() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getCommitCoherence', () => rource.getCommitCoherence(), null);
+        return parseInsightsJson('getCommitCoherence', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns Markov chain next-file prediction (Hassan & Holt 2004).
+ * @returns {Object|null} Transition probabilities for file co-change prediction
+ */
+export function getMarkovPrediction() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getMarkovPrediction', () => rource.getMarkovPrediction(), null);
+        return parseInsightsJson('getMarkovPrediction', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns composite repository health score (Borg et al. 2024).
+ * @returns {Object|null} Health score [0-100] with grade and dimension breakdown
+ */
+export function getRepoHealth() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getRepoHealth', () => rource.getRepoHealth(), null);
+        return parseInsightsJson('getRepoHealth', json, null);
+    }
+    return null;
+}
