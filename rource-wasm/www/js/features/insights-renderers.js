@@ -104,6 +104,14 @@ const CITE = {
     fritz2010_expertise: { text: 'Fritz et al. 2010, FSE', url: 'https://doi.org/10.1145/1882291.1882300' },
     fakhoury2019: { text: 'Fakhoury et al. 2019, ICPC', url: 'https://doi.org/10.1109/ICPC.2019.00014' },
     kapur2023: { text: 'Kapur & Musgrove 2023, ESEC/FSE', url: 'https://doi.org/10.1145/3611643.3616295' },
+    // Strategic tab citations
+    forsgren2018: { text: 'Forsgren, Humble & Kim 2018, Accelerate', url: '' },
+    ebbinghaus1885: { text: 'Ebbinghaus 1885, Memory', url: '' },
+    jabrayilzade2022: { text: 'Jabrayilzade et al. 2022, JSS', url: '' },
+    fisher1993: { text: 'Fisher 1993, Statistical Analysis of Circular Data', url: '' },
+    cataldo2008_coord: { text: 'Cataldo & Herbsleb 2008, ESEM', url: 'https://doi.org/10.1145/1414004.1414008' },
+    xu2025: { text: 'Xu et al. 2025, JCST', url: '' },
+    borg2024: { text: 'Borg et al. 2024, IEEE Software', url: '' },
 };
 
 /**
@@ -1391,6 +1399,208 @@ function renderCognitiveLoadTable(files) {
         html += `<td>${formatFixed(f.couplingComponent, 3)}</td>`;
         html += `<td>${formatFixed(f.dirSpreadComponent, 3)}</td>`;
         html += `<td>${f.authorCount || 0}</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+    return html;
+}
+
+// ============================================================================
+// Strategic Tab: Next-Generation Git Mining Insights
+// ============================================================================
+
+/**
+ * Strategic tab: DORA proxy metrics, knowledge currency, team rhythm,
+ * commit coherence, Markov prediction, repository health score.
+ *
+ * Data sources (all verified against insights.rs):
+ * - cachedData.doraProxy: unwrapped from getDoraProxy().doraProxy
+ * - cachedData.knowledgeCurrencyData: unwrapped from getKnowledgeCurrency().knowledgeCurrency
+ * - cachedData.teamRhythmData: unwrapped from getTeamRhythm().teamRhythm
+ * - cachedData.commitCoherenceData: unwrapped from getCommitCoherence().commitCoherence
+ * - cachedData.markovPrediction: unwrapped from getMarkovPrediction().markovPrediction
+ * - cachedData.repoHealth: unwrapped from getRepoHealth().repoHealth
+ */
+export function renderStrategicTab(cachedData) {
+    const parts = [];
+
+    parts.push(renderTabIntro(
+        'Strategic Intelligence',
+        'Next-generation metrics combining DORA performance proxies, knowledge decay modeling, circular statistics, Markov chain predictions, and composite health scoring. All computed purely from VCS commit data.'
+    ));
+
+    parts.push(renderMetricNav([
+        'Repository Health', 'DORA Proxy', 'Knowledge Currency',
+        'Team Rhythm', 'Commit Coherence', 'Markov Prediction'
+    ]));
+
+    // Repository Health Score (Borg et al. 2024)
+    const rh = cachedData.repoHealth;
+    if (rh) {
+        const dims = rh.dimensions || {};
+        const dimList = [
+            ['Bus Factor Coverage', formatFixed(dims.busFactorCoverage, 3)],
+            ['Knowledge Currency', formatFixed(dims.knowledgeCurrency, 3)],
+            ['Commit Atomicity', formatFixed(dims.commitAtomicity, 3)],
+            ['Ownership Health', formatFixed(dims.ownershipHealth, 3)],
+            ['Change Stability', formatFixed(dims.changeStability, 3)],
+            ['Defect Risk (inverse)', formatFixed(dims.defectRiskInverse, 3)],
+        ];
+        parts.push(renderMetricSection(
+            'Repository Health',
+            'Composite health score combining 6 weighted dimensions into a single grade. Higher scores indicate healthier repositories with lower risk.',
+            [CITE.borg2024, CITE.avelino2016, CITE.bird2011],
+            renderKeyValueList(dimList),
+            `Overall score: ${formatFixed(rh.score, 1)}/100 (Grade: ${escapeHtml(rh.grade || '?')}). ${escapeHtml(rh.interpretation || '')}`
+        ));
+    }
+
+    // DORA Proxy Metrics (Forsgren et al. 2018)
+    const dora = cachedData.doraProxy;
+    if (dora) {
+        const kvs = [
+            ['Merge Frequency', `${formatFixed(dora.mergeFrequencyPerWeek, 2)}/week`],
+            ['Avg Branch Duration', `${formatFixed(dora.avgBranchDurationHours, 1)} hours`],
+            ['Revert Ratio', formatFixed(dora.revertRatio, 4)],
+            ['Avg Recovery Time', `${formatFixed(dora.avgRecoveryHours, 1)} hours`],
+            ['Rework Ratio', formatFixed(dora.reworkRatio, 4)],
+            ['Performance Tier', escapeHtml(dora.performanceTier || 'unknown')],
+        ];
+        parts.push(renderMetricSection(
+            'DORA Proxy',
+            'Proxy measures for DORA\u2019s Four Key Metrics derived entirely from VCS commit patterns: merge frequency, branch duration, revert ratio, and recovery time.',
+            [CITE.forsgren2018],
+            renderKeyValueList(kvs),
+            `${dora.totalCommits || 0} total commits. ${dora.mergeCount || 0} merges, ${dora.revertCount || 0} reverts, ${dora.fixCount || 0} fixes detected.`
+        ));
+    }
+
+    // Knowledge Currency (Fritz et al. 2010, Ebbinghaus 1885)
+    const kc = cachedData.knowledgeCurrencyData;
+    if (kc) {
+        const files = (kc.files || []).slice(0, 15);
+        parts.push(renderMetricSection(
+            'Knowledge Currency',
+            'Per-file knowledge freshness combining recency, exponential decay (Ebbinghaus forgetting curve), knowledge refreshes, and active contributor count.',
+            [CITE.fritz2010_dok, CITE.ebbinghaus1885, CITE.jabrayilzade2022],
+            files.length > 0
+                ? renderKnowledgeCurrencyTable(files)
+                : emptyState('No knowledge currency data', 'Requires commit history with file-author timestamps.'),
+            `Average currency: ${formatFixed(kc.avgCurrency, 3)}. ${kc.staleCount || 0} stale files (< 0.3), ${kc.currentCount || 0} current files (\u2265 0.7) out of ${kc.totalFiles || 0} total.`
+        ));
+    }
+
+    // Team Rhythm (Fisher 1993)
+    const tr = cachedData.teamRhythmData;
+    if (tr) {
+        const devs = (tr.developers || []).slice(0, 15);
+        parts.push(renderMetricSection(
+            'Team Rhythm',
+            'Circular statistics on commit hour-of-day distributions measuring developer regularity and team synchronization. High sync indicates cadence alignment; low sync suggests asynchronous patterns.',
+            [CITE.fisher1993, CITE.eyolfson2011, CITE.cataldo2008_coord],
+            devs.length > 0
+                ? renderTeamRhythmTable(devs)
+                : emptyState('No team rhythm data', 'Requires commits from multiple developers.'),
+            `Team sync score: ${formatFixed(tr.teamSyncScore, 3)}. Mean hour: ${formatFixed(tr.teamMeanHour, 1)}h. ${tr.highSyncPairs || 0} high-sync pairs, ${tr.lowSyncPairs || 0} low-sync pairs out of ${tr.totalPairs || 0} total.`
+        ));
+    }
+
+    // Commit Coherence (Herzig & Zeller 2013)
+    const cc = cachedData.commitCoherenceData;
+    if (cc) {
+        const commits = (cc.commits || []).slice(0, 15);
+        parts.push(renderMetricSection(
+            'Commit Coherence',
+            'Per-commit quality score measuring how logically coherent each change is. Low coherence indicates tangled commits that combine unrelated concerns and should have been split.',
+            [CITE.herzig2013, CITE.xu2025],
+            commits.length > 0
+                ? renderCommitCoherenceTable(commits)
+                : emptyState('No commit coherence data', 'Requires multi-file commits for analysis.'),
+            `Atomicity index (median coherence): ${formatFixed(cc.atomicityIndex, 3)}. Tangled fraction: ${formatFixed(cc.tangledFraction, 3)}. ${cc.totalAnalyzed || 0} multi-file commits analyzed.`
+        ));
+    }
+
+    // Markov Prediction (Hassan & Holt 2004)
+    const mp = cachedData.markovPrediction;
+    if (mp) {
+        const preds = (mp.filePredictions || []).slice(0, 15);
+        parts.push(renderMetricSection(
+            'Markov Prediction',
+            'First-order Markov chain transition matrix predicting which files are likely to need changes next based on historical co-change patterns.',
+            [CITE.hassan2004, CITE.zimmermann2005, CITE.balachandran2013],
+            preds.length > 0
+                ? renderMarkovPredictionTable(preds)
+                : emptyState('No prediction data', 'Requires multi-file commits for transition analysis.'),
+            `${mp.totalFiles || 0} files in transition matrix, ${mp.totalTransitions || 0} transitions observed. Matrix sparsity: ${formatFixed(mp.matrixSparsity, 3)}.`
+        ));
+    }
+
+    return parts.join('');
+}
+
+// ---- Strategic tab table renderers ----
+
+function renderKnowledgeCurrencyTable(files) {
+    let html = '<div class="insights-table-wrapper"><table class="insights-table"><thead><tr>';
+    html += '<th>File</th><th>Currency</th><th>Days Stale</th><th>Active</th><th>Total</th><th>Refreshes</th>';
+    html += '</tr></thead><tbody>';
+    for (const f of files) {
+        const cls = (f.currency || 0) < 0.3 ? ' class="insights-cell-warn"' : '';
+        html += `<tr><td title="${escapeHtml(f.path)}">${escapeHtml(truncatePath(f.path))}</td>`;
+        html += `<td${cls}>${formatFixed(f.currency, 3)}</td>`;
+        html += `<td>${formatFixed(f.daysSinceLastTouch, 0)}</td>`;
+        html += `<td>${f.activeContributors || 0}</td>`;
+        html += `<td>${f.totalContributors || 0}</td>`;
+        html += `<td>${f.refreshCount || 0}</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+    return html;
+}
+
+function renderTeamRhythmTable(devs) {
+    let html = '<div class="insights-table-wrapper"><table class="insights-table"><thead><tr>';
+    html += '<th>Developer</th><th>Mean Hour</th><th>R\u0304</th><th>Type</th><th>Commits</th>';
+    html += '</tr></thead><tbody>';
+    for (const d of devs) {
+        html += `<tr><td>${escapeHtml(d.author)}</td>`;
+        html += `<td>${formatFixed(d.meanHour, 1)}h</td>`;
+        html += `<td>${formatFixed(d.resultantLength, 3)}</td>`;
+        html += `<td>${escapeHtml(d.rhythmType || '')}</td>`;
+        html += `<td>${d.commitCount || 0}</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+    return html;
+}
+
+function renderCommitCoherenceTable(commits) {
+    let html = '<div class="insights-table-wrapper"><table class="insights-table"><thead><tr>';
+    html += '<th>Author</th><th>Coherence</th><th>Files</th><th>Dirs</th><th>Type Homog.</th>';
+    html += '</tr></thead><tbody>';
+    for (const c of commits) {
+        const cls = (c.coherence || 0) < 0.5 ? ' class="insights-cell-warn"' : '';
+        html += `<tr><td>${escapeHtml(c.author)}</td>`;
+        html += `<td${cls}>${formatFixed(c.coherence, 3)}</td>`;
+        html += `<td>${c.fileCount || 0}</td>`;
+        html += `<td>${c.directoryCount || 0}</td>`;
+        html += `<td>${formatFixed(c.typeHomogeneity, 3)}</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+    return html;
+}
+
+function renderMarkovPredictionTable(preds) {
+    let html = '<div class="insights-table-wrapper"><table class="insights-table"><thead><tr>';
+    html += '<th>Source File</th><th>Top Prediction</th><th>Probability</th><th>Transitions</th>';
+    html += '</tr></thead><tbody>';
+    for (const fp of preds) {
+        const top = (fp.predictions || [])[0];
+        html += `<tr><td title="${escapeHtml(fp.source)}">${escapeHtml(truncatePath(fp.source))}</td>`;
+        if (top) {
+            html += `<td title="${escapeHtml(top.target)}">${escapeHtml(truncatePath(top.target))}</td>`;
+            html += `<td>${formatFixed(top.probability, 3)}</td>`;
+        } else {
+            html += '<td>-</td><td>-</td>';
+        }
+        html += `<td>${fp.transitionCount || 0}</td></tr>`;
     }
     html += '</tbody></table></div>';
     return html;

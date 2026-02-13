@@ -143,6 +143,13 @@ fn format_insights_json(report: &InsightsReport) -> String {
     write_knowledge_gini_json(&mut json, report);
     write_expertise_profile_json(&mut json, report);
     write_cognitive_load_json(&mut json, report);
+    // Strategic tab metrics (next-generation git mining insights)
+    write_dora_proxy_json(&mut json, report);
+    write_knowledge_currency_json(&mut json, report);
+    write_team_rhythm_json(&mut json, report);
+    write_commit_coherence_json(&mut json, report);
+    write_markov_prediction_json(&mut json, report);
+    write_repo_health_json(&mut json, report);
     json.push('}');
     json
 }
@@ -1675,6 +1682,77 @@ impl Rource {
         write_cognitive_load_json_standalone(&mut json, report);
         Some(json)
     }
+
+    // ========================================================================
+    // Strategic tab: next-generation git mining insights
+    // ========================================================================
+
+    /// Returns DORA proxy metrics as JSON (Forsgren et al. 2018).
+    ///
+    /// Includes merge frequency, branch duration, revert ratio, recovery time,
+    /// rework ratio, performance tier classification, and 4-week trend windows.
+    #[wasm_bindgen(js_name = getDoraProxy)]
+    pub fn get_dora_proxy(&self) -> Option<String> {
+        let report = self.cached_report.as_ref()?;
+        let mut json = String::with_capacity(2048);
+        write_dora_proxy_json_standalone(&mut json, report);
+        Some(json)
+    }
+
+    /// Returns knowledge currency index as JSON (Fritz et al. 2010, Ebbinghaus 1885).
+    ///
+    /// Per-file knowledge freshness combining recency, decay, refreshes, and active contributors.
+    #[wasm_bindgen(js_name = getKnowledgeCurrency)]
+    pub fn get_knowledge_currency(&self) -> Option<String> {
+        let report = self.cached_report.as_ref()?;
+        let mut json = String::with_capacity(4096);
+        write_knowledge_currency_json_standalone(&mut json, report);
+        Some(json)
+    }
+
+    /// Returns team rhythm synchronization as JSON (Fisher 1993, Eyolfson et al. 2011).
+    ///
+    /// Circular statistics on commit hour distributions with team sync scoring.
+    #[wasm_bindgen(js_name = getTeamRhythm)]
+    pub fn get_team_rhythm(&self) -> Option<String> {
+        let report = self.cached_report.as_ref()?;
+        let mut json = String::with_capacity(2048);
+        write_team_rhythm_json_standalone(&mut json, report);
+        Some(json)
+    }
+
+    /// Returns commit coherence scoring as JSON (Herzig & Zeller 2013).
+    ///
+    /// Per-commit tangled change detection with atomicity index and developer breakdown.
+    #[wasm_bindgen(js_name = getCommitCoherence)]
+    pub fn get_commit_coherence(&self) -> Option<String> {
+        let report = self.cached_report.as_ref()?;
+        let mut json = String::with_capacity(4096);
+        write_commit_coherence_json_standalone(&mut json, report);
+        Some(json)
+    }
+
+    /// Returns Markov chain next-file prediction as JSON (Hassan & Holt 2004).
+    ///
+    /// Transition probability matrix for predicting which files change together.
+    #[wasm_bindgen(js_name = getMarkovPrediction)]
+    pub fn get_markov_prediction(&self) -> Option<String> {
+        let report = self.cached_report.as_ref()?;
+        let mut json = String::with_capacity(4096);
+        write_markov_prediction_json_standalone(&mut json, report);
+        Some(json)
+    }
+
+    /// Returns composite repository health score as JSON (Borg et al. 2024).
+    ///
+    /// Weighted health score [0-100] with letter grade and dimension breakdown.
+    #[wasm_bindgen(js_name = getRepoHealth)]
+    pub fn get_repo_health(&self) -> Option<String> {
+        let report = self.cached_report.as_ref()?;
+        let mut json = String::with_capacity(512);
+        write_repo_health_json_standalone(&mut json, report);
+        Some(json)
+    }
 }
 
 // ============================================================================
@@ -1686,7 +1764,7 @@ fn format_file_metrics_json(fm: &rource_core::insights::index::FileMetrics) -> S
     let mut json = String::with_capacity(512);
     let _ = write!(
         json,
-        r#"{{"hotspotScore":{:.4},"hotspotRank":{},"totalChanges":{},"contributorCount":{},"topOwnerShare":{:.4},"topOwner":"{}","lifecycleStage":"{}","ageDays":{:.1},"burstCount":{},"burstRiskScore":{:.4},"circadianRisk":{:.4},"knowledgeEntropy":{:.4},"isKnowledgeSilo":{},"diffusionScore":{:.4},"couplingDegree":{},"minorContributors":{},"majorContributors":{},"ownershipGini":{:.4},"defectScore":{:.4},"churnCv":{:.4},"defectPatternScore":{:.4}}}"#,
+        r#"{{"hotspotScore":{:.4},"hotspotRank":{},"totalChanges":{},"contributorCount":{},"topOwnerShare":{:.4},"topOwner":"{}","lifecycleStage":"{}","ageDays":{:.1},"burstCount":{},"burstRiskScore":{:.4},"circadianRisk":{:.4},"knowledgeEntropy":{:.4},"isKnowledgeSilo":{},"diffusionScore":{:.4},"couplingDegree":{},"minorContributors":{},"majorContributors":{},"ownershipGini":{:.4},"defectScore":{:.4},"churnCv":{:.4},"defectPatternScore":{:.4},"knowledgeCurrency":{:.4}}}"#,
         fm.hotspot_score,
         fm.hotspot_rank
             .map_or_else(|| "null".to_string(), |r| r.to_string()),
@@ -1709,6 +1787,7 @@ fn format_file_metrics_json(fm: &rource_core::insights::index::FileMetrics) -> S
         fm.defect_score,
         fm.churn_cv,
         fm.defect_pattern_score,
+        fm.knowledge_currency,
     );
     json
 }
@@ -1718,7 +1797,7 @@ fn format_user_metrics_json(um: &rource_core::insights::index::UserMetrics) -> S
     let mut json = String::with_capacity(384);
     let _ = write!(
         json,
-        r#"{{"commitCount":{},"profileType":"{}","uniqueFiles":{},"avgFilesPerCommit":{:.2},"activeSpanDays":{:.1},"cadenceType":"{}","meanCommitInterval":{:.1},"focusScore":{:.4},"networkDegree":{},"networkBetweenness":{:.4},"circadianAvgRisk":{:.4},"directoriesTouched":{},"experienceScore":{:.4},"tenureDays":{:.1},"truckFactorDoa":{:.4},"soleExpertCount":{},"isDeparted":{}}}"#,
+        r#"{{"commitCount":{},"profileType":"{}","uniqueFiles":{},"avgFilesPerCommit":{:.2},"activeSpanDays":{:.1},"cadenceType":"{}","meanCommitInterval":{:.1},"focusScore":{:.4},"networkDegree":{},"networkBetweenness":{:.4},"circadianAvgRisk":{:.4},"directoriesTouched":{},"experienceScore":{:.4},"tenureDays":{:.1},"truckFactorDoa":{:.4},"soleExpertCount":{},"isDeparted":{},"rhythmType":"{}","meanCoherence":{:.4}}}"#,
         um.commit_count,
         um.profile_type,
         um.unique_files,
@@ -1736,6 +1815,8 @@ fn format_user_metrics_json(um: &rource_core::insights::index::UserMetrics) -> S
         um.truck_factor_doa,
         um.sole_expert_count,
         um.is_departed,
+        um.rhythm_type,
+        um.mean_coherence,
     );
     json
 }
@@ -3016,6 +3097,232 @@ fn write_expertise_profile_json_standalone(json: &mut String, report: &InsightsR
 fn write_cognitive_load_json_standalone(json: &mut String, report: &InsightsReport) {
     let mut buf = String::new();
     write_cognitive_load_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+// ============================================================================
+// Strategic tab: JSON writers (next-generation git mining insights)
+// ============================================================================
+
+/// Appends DORA proxy metrics to the JSON output (Forsgren et al. 2018).
+fn write_dora_proxy_json(json: &mut String, report: &InsightsReport) {
+    let d = &report.dora_proxy;
+    json.push_str(",\"doraProxy\":{");
+    let _ = write!(
+        json,
+        r#""mergeFrequencyPerWeek":{:.4},"avgBranchDurationHours":{:.1},"revertRatio":{:.4},"avgRecoveryHours":{:.1},"reworkRatio":{:.4},"performanceTier":"{}","mergeCount":{},"revertCount":{},"fixCount":{},"totalCommits":{}"#,
+        d.merge_frequency_per_week,
+        d.avg_branch_duration_hours,
+        d.revert_ratio,
+        d.avg_recovery_hours,
+        d.rework_ratio,
+        d.performance_tier,
+        d.merge_count,
+        d.revert_count,
+        d.fix_count,
+        d.total_commits,
+    );
+    // Trend windows
+    json.push_str(",\"windows\":[");
+    for (i, w) in d.windows.iter().enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"startTs":{},"endTs":{},"mergeCount":{},"revertCount":{},"fixCount":{},"totalCommits":{}}}"#,
+            w.start_ts, w.end_ts, w.merge_count, w.revert_count, w.fix_count, w.total_commits,
+        );
+    }
+    json.push_str("]}");
+}
+
+fn write_dora_proxy_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_dora_proxy_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Appends knowledge currency metrics to the JSON output (Fritz et al. 2010).
+fn write_knowledge_currency_json(json: &mut String, report: &InsightsReport) {
+    let kc = &report.knowledge_currency;
+    json.push_str(",\"knowledgeCurrency\":{\"files\":[");
+    for (i, f) in kc.files.iter().take(50).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"path":"{}","currency":{:.4},"daysSinceLastTouch":{:.1},"refreshCount":{},"activeContributors":{},"totalContributors":{},"decayedKnowledgeSum":{:.4}}}"#,
+            escape_json(&f.path),
+            f.currency,
+            f.days_since_last_touch,
+            f.refresh_count,
+            f.active_contributor_count,
+            f.total_contributor_count,
+            f.decayed_knowledge_sum,
+        );
+    }
+    let _ = write!(
+        json,
+        r#"],"avgCurrency":{:.4},"staleCount":{},"currentCount":{},"totalFiles":{}}}"#,
+        kc.avg_currency, kc.stale_count, kc.current_count, kc.total_files,
+    );
+}
+
+fn write_knowledge_currency_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_knowledge_currency_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Appends team rhythm metrics to the JSON output (Fisher 1993).
+fn write_team_rhythm_json(json: &mut String, report: &InsightsReport) {
+    let tr = &report.team_rhythm;
+    json.push_str(",\"teamRhythm\":{\"developers\":[");
+    for (i, d) in tr.developers.iter().take(30).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"author":"{}","meanHour":{:.2},"resultantLength":{:.4},"circularVariance":{:.4},"commitCount":{},"rhythmType":"{}"}}"#,
+            escape_json(&d.author),
+            d.mean_hour,
+            d.resultant_length,
+            d.circular_variance,
+            d.commit_count,
+            d.rhythm_type,
+        );
+    }
+    let _ = write!(
+        json,
+        r#"],"teamSyncScore":{:.4},"meanResultantLength":{:.4},"teamMeanHour":{:.2},"teamCircularVariance":{:.4},"highSyncPairs":{},"lowSyncPairs":{},"totalPairs":{}}}"#,
+        tr.team_sync_score,
+        tr.mean_resultant_length,
+        tr.team_mean_hour,
+        tr.team_circular_variance,
+        tr.high_sync_pairs,
+        tr.low_sync_pairs,
+        tr.total_pairs,
+    );
+}
+
+fn write_team_rhythm_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_team_rhythm_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Appends commit coherence metrics to the JSON output (Herzig & Zeller 2013).
+fn write_commit_coherence_json(json: &mut String, report: &InsightsReport) {
+    let cc = &report.commit_coherence_score;
+    json.push_str(",\"commitCoherence\":{\"commits\":[");
+    for (i, c) in cc.commits.iter().take(30).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"author":"{}","timestamp":{},"fileCount":{},"coherence":{:.4},"directoryCount":{},"typeHomogeneity":{:.4},"cochangeAffinity":{:.4}}}"#,
+            escape_json(&c.author),
+            c.timestamp,
+            c.file_count,
+            c.coherence,
+            c.directory_count,
+            c.type_homogeneity,
+            c.cochange_affinity,
+        );
+    }
+    json.push_str("],\"developerCoherence\":[");
+    for (i, d) in cc.developer_coherence.iter().take(30).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"author":"{}","meanCoherence":{:.4},"tangledCount":{},"totalCommits":{}}}"#,
+            escape_json(&d.author),
+            d.mean_coherence,
+            d.tangled_count,
+            d.total_commits,
+        );
+    }
+    let _ = write!(
+        json,
+        r#"],"atomicityIndex":{:.4},"tangledFraction":{:.4},"totalAnalyzed":{}}}"#,
+        cc.atomicity_index, cc.tangled_fraction, cc.total_analyzed,
+    );
+}
+
+fn write_commit_coherence_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_commit_coherence_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Appends Markov prediction metrics to the JSON output (Hassan & Holt 2004).
+fn write_markov_prediction_json(json: &mut String, report: &InsightsReport) {
+    let mp = &report.markov_prediction;
+    json.push_str(",\"markovPrediction\":{\"filePredictions\":[");
+    for (i, fp) in mp.file_predictions.iter().take(30).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"source":"{}","transitionCount":{},"predictions":["#,
+            escape_json(&fp.source),
+            fp.transition_count,
+        );
+        for (j, p) in fp.predictions.iter().enumerate() {
+            if j > 0 {
+                json.push(',');
+            }
+            let _ = write!(
+                json,
+                r#"{{"target":"{}","probability":{:.4},"count":{}}}"#,
+                escape_json(&p.target),
+                p.probability,
+                p.count,
+            );
+        }
+        json.push_str("]}");
+    }
+    let _ = write!(
+        json,
+        r#"],"totalFiles":{},"totalTransitions":{},"matrixSparsity":{:.4}}}"#,
+        mp.total_files, mp.total_transitions, mp.matrix_sparsity,
+    );
+}
+
+fn write_markov_prediction_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_markov_prediction_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Appends repository health score to the JSON output (Borg et al. 2024).
+fn write_repo_health_json(json: &mut String, report: &InsightsReport) {
+    let rh = &report.repo_health;
+    let _ = write!(
+        json,
+        r#","repoHealth":{{"score":{:.1},"grade":"{}","interpretation":"{}","dimensions":{{"busFactorCoverage":{:.4},"knowledgeCurrency":{:.4},"commitAtomicity":{:.4},"ownershipHealth":{:.4},"changeStability":{:.4},"defectRiskInverse":{:.4}}}}}"#,
+        rh.score,
+        rh.grade,
+        escape_json(rh.interpretation),
+        rh.dimensions.bus_factor_coverage,
+        rh.dimensions.knowledge_currency,
+        rh.dimensions.commit_atomicity,
+        rh.dimensions.ownership_health,
+        rh.dimensions.change_stability,
+        rh.dimensions.defect_risk_inverse,
+    );
+}
+
+fn write_repo_health_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_repo_health_json(&mut buf, report);
     json.push_str(buf.trim_start_matches(','));
 }
 

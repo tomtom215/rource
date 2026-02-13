@@ -81,6 +81,14 @@ pub mod truck_factor;
 pub mod turnover_impact;
 pub mod work_type;
 
+// Strategic tab modules (next-generation git mining metrics)
+pub mod commit_coherence;
+pub mod dora_proxy;
+pub mod knowledge_currency;
+pub mod markov_prediction;
+pub mod repo_health;
+pub mod team_rhythm;
+
 use rustc_hash::FxHashMap;
 
 // ============================================================================
@@ -286,6 +294,25 @@ pub struct InsightsReport {
     /// Cognitive load estimation (Fakhoury et al. 2019, Kapur & Musgrove 2023).
     pub cognitive_load: cognitive_load::CognitiveLoadReport,
 
+    // ---- Strategic tab metrics (next-generation git mining insights) ----
+    /// DORA proxy metrics (Forsgren et al. 2018, DORA 2024/2025).
+    pub dora_proxy: dora_proxy::DoraProxyReport,
+
+    /// Knowledge currency index (Fritz et al. 2010, Ebbinghaus 1885).
+    pub knowledge_currency: knowledge_currency::KnowledgeCurrencyReport,
+
+    /// Team rhythm synchronization (Eyolfson et al. 2011, Fisher 1993).
+    pub team_rhythm: team_rhythm::TeamRhythmReport,
+
+    /// Commit coherence / tangling detection (Herzig & Zeller 2013, Xu et al. 2025).
+    pub commit_coherence_score: commit_coherence::CommitCoherenceReport,
+
+    /// Markov chain next-file prediction (Hassan & Holt 2004, Zimmermann et al. 2005).
+    pub markov_prediction: markov_prediction::MarkovPredictionReport,
+
+    /// Composite repository health score (Borg et al. 2024, SIG methodology).
+    pub repo_health: repo_health::RepoHealthReport,
+
     /// Summary statistics.
     pub summary: SummaryStats,
 }
@@ -444,6 +471,54 @@ pub fn compute_insights(commits: &[CommitRecord]) -> InsightsReport {
         expertise_profile::compute_expertise_profiles(&accumulators.file_authors);
     let cognitive_load = accumulators.cognitive_load_acc.finalize();
 
+    // Strategic tab metrics (next-generation git mining insights)
+    let dora_proxy = accumulators.dora_proxy_acc.finalize();
+    let knowledge_currency_report =
+        knowledge_currency::compute_knowledge_currency(&accumulators.file_author_timestamps, t_max);
+    let team_rhythm = accumulators.team_rhythm_acc.finalize();
+
+    // Commit coherence score: uses lift map from coupling data
+    let lift_map_for_coherence: rustc_hash::FxHashMap<(String, String), f64> = couplings
+        .iter()
+        .map(|p| ((p.file_a.clone(), p.file_b.clone()), p.lift))
+        .collect();
+    let commit_coherence_score = accumulators
+        .commit_coherence_acc
+        .finalize(&lift_map_for_coherence);
+
+    // Markov chain next-file prediction
+    let markov_prediction =
+        markov_prediction::compute_markov_predictions(&accumulators.commit_file_lists);
+
+    // Composite repository health score (computed from pre-computed metrics)
+    let repo_health = {
+        let avg_gini = if ownership_frag.files.is_empty() {
+            0.0
+        } else {
+            ownership_frag
+                .files
+                .iter()
+                .map(|f| f.gini_coefficient)
+                .sum::<f64>()
+                / ownership_frag.files.len() as f64
+        };
+        let avg_cv = churn_volatility.avg_cv;
+        let bus_factor_coverage = if truck_factor_report.total_files > 0 {
+            // Estimate: files not solely owned / total files
+            1.0 - truck_factor_report.single_expert_pct / 100.0
+        } else {
+            0.0
+        };
+        repo_health::compute_repo_health(&repo_health::HealthInputs {
+            bus_factor_coverage,
+            avg_knowledge_currency: knowledge_currency_report.avg_currency,
+            commit_atomicity: commit_coherence_score.atomicity_index,
+            avg_ownership_gini: avg_gini,
+            avg_churn_cv: avg_cv,
+            avg_defect_score: 0.0, // defect_prediction deferred to InsightsIndex
+        })
+    };
+
     let summary = compute_summary(
         commits,
         &ownership,
@@ -506,6 +581,12 @@ pub fn compute_insights(commits: &[CommitRecord]) -> InsightsReport {
         knowledge_gini,
         expertise_profile,
         cognitive_load,
+        dora_proxy,
+        knowledge_currency: knowledge_currency_report,
+        team_rhythm,
+        commit_coherence_score,
+        markov_prediction,
+        repo_health,
         summary,
     }
 }
@@ -967,6 +1048,62 @@ fn empty_report() -> InsightsReport {
             high_load_count: 0,
             total_analyzed: 0,
         },
+        dora_proxy: dora_proxy::DoraProxyReport {
+            merge_frequency_per_week: 0.0,
+            avg_branch_duration_hours: 0.0,
+            revert_ratio: 0.0,
+            avg_recovery_hours: 0.0,
+            rework_ratio: 0.0,
+            total_commits: 0,
+            revert_count: 0,
+            fix_count: 0,
+            merge_count: 0,
+            performance_tier: dora_proxy::DoraPerformanceTier::Low,
+            windows: Vec::new(),
+        },
+        knowledge_currency: knowledge_currency::KnowledgeCurrencyReport {
+            files: Vec::new(),
+            avg_currency: 0.0,
+            stale_count: 0,
+            current_count: 0,
+            total_files: 0,
+        },
+        team_rhythm: team_rhythm::TeamRhythmReport {
+            developers: Vec::new(),
+            team_sync_score: 0.0,
+            mean_resultant_length: 0.0,
+            team_mean_hour: 0.0,
+            team_circular_variance: 1.0,
+            high_sync_pairs: 0,
+            low_sync_pairs: 0,
+            total_pairs: 0,
+        },
+        commit_coherence_score: commit_coherence::CommitCoherenceReport {
+            commits: Vec::new(),
+            atomicity_index: 1.0,
+            tangled_fraction: 0.0,
+            developer_coherence: Vec::new(),
+            total_analyzed: 0,
+        },
+        markov_prediction: markov_prediction::MarkovPredictionReport {
+            file_predictions: Vec::new(),
+            total_files: 0,
+            total_transitions: 0,
+            matrix_sparsity: 1.0,
+        },
+        repo_health: repo_health::RepoHealthReport {
+            score: 0.0,
+            dimensions: repo_health::HealthDimensions {
+                bus_factor_coverage: 0.0,
+                knowledge_currency: 0.0,
+                commit_atomicity: 1.0,
+                ownership_health: 1.0,
+                change_stability: 1.0,
+                defect_risk_inverse: 1.0,
+            },
+            grade: repo_health::HealthGrade::F,
+            interpretation: "No data available.",
+        },
         summary: SummaryStats {
             total_commits: 0,
             total_files: 0,
@@ -1022,6 +1159,14 @@ struct CommitAccumulators {
     focus_drift_acc: focus_drift::FocusDriftAccumulator,
     ai_change_detection_acc: ai_change_detection::AiChangeDetectionAccumulator,
     cognitive_load_acc: cognitive_load::CognitiveLoadAccumulator,
+    // Strategic tab accumulators (next-generation git mining insights)
+    dora_proxy_acc: dora_proxy::DoraProxyAccumulator,
+    team_rhythm_acc: team_rhythm::TeamRhythmAccumulator,
+    commit_coherence_acc: commit_coherence::CommitCoherenceAccumulator,
+    /// Per-commit file lists for Markov prediction.
+    commit_file_lists: Vec<Vec<String>>,
+    /// Per-file author timestamps for knowledge currency.
+    file_author_timestamps: FxHashMap<String, FxHashMap<String, Vec<i64>>>,
 }
 
 /// Single pass over commits to populate all accumulators.
@@ -1071,6 +1216,13 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
     let mut focus_drift_acc = focus_drift::FocusDriftAccumulator::new();
     let mut ai_change_detection_acc = ai_change_detection::AiChangeDetectionAccumulator::new();
     let mut cognitive_load_acc = cognitive_load::CognitiveLoadAccumulator::new();
+    // Strategic tab accumulators
+    let mut dora_proxy_acc = dora_proxy::DoraProxyAccumulator::new();
+    let mut team_rhythm_acc = team_rhythm::TeamRhythmAccumulator::new();
+    let mut commit_coherence_acc_new = commit_coherence::CommitCoherenceAccumulator::new();
+    let mut commit_file_lists: Vec<Vec<String>> = Vec::with_capacity(commits.len());
+    let mut file_author_timestamps: FxHashMap<String, FxHashMap<String, Vec<i64>>> =
+        FxHashMap::default();
 
     for commit in commits {
         *unique_authors.entry(commit.author.clone()).or_insert(0) += 1;
@@ -1127,6 +1279,19 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
         ai_change_detection_acc.record_commit(&commit.author, commit.timestamp, &file_paths);
         cognitive_load_acc.record_commit(&commit.author, commit.timestamp, &file_paths);
 
+        // Strategic tab accumulators: per-commit data
+        dora_proxy_acc.record_commit(commit.timestamp, commit.message.as_deref());
+        team_rhythm_acc.record_commit(&commit.author, commit.timestamp);
+        {
+            let owned_paths: Vec<String> = file_paths.iter().map(|s| (*s).to_string()).collect();
+            commit_coherence_acc_new.record_commit(
+                &commit.author,
+                commit.timestamp,
+                owned_paths.clone(),
+            );
+            commit_file_lists.push(owned_paths);
+        }
+
         // Session 5b accumulators: repository overview metrics
         activity_heatmap_acc.record_commit(commit.timestamp);
         {
@@ -1165,6 +1330,14 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
             reviewer_recommendation_acc.record_file(&file.path, &commit.author, commit.timestamp);
             review_response_acc.record_file(&file.path, &commit.author, commit.timestamp);
             interface_stability_acc.record_file(&file.path, &commit.author);
+
+            // Strategic tab: per-file author timestamps for knowledge currency
+            file_author_timestamps
+                .entry(file.path.clone())
+                .or_default()
+                .entry(commit.author.clone())
+                .or_default()
+                .push(commit.timestamp);
 
             // Session 5 accumulators: per-file data
             churn_volatility_acc.record_file(&file.path, file.action, commit.timestamp);
@@ -1225,6 +1398,11 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
         focus_drift_acc,
         ai_change_detection_acc,
         cognitive_load_acc,
+        dora_proxy_acc,
+        team_rhythm_acc,
+        commit_coherence_acc: commit_coherence_acc_new,
+        commit_file_lists,
+        file_author_timestamps,
     }
 }
 
