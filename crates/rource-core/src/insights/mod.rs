@@ -31,6 +31,7 @@
 //! on the visualization's frame budget.
 
 pub mod activity_heatmap;
+pub mod ai_change_detection;
 pub mod architectural_drift;
 pub mod cadence;
 pub mod change_bursts;
@@ -38,6 +39,7 @@ pub mod change_entropy;
 pub mod change_propagation;
 pub mod churn_volatility;
 pub mod circadian;
+pub mod cognitive_load;
 pub mod commit_cohesion;
 pub mod commit_complexity;
 pub mod commit_message_entropy;
@@ -47,23 +49,31 @@ pub mod coupling;
 pub mod defect_patterns;
 pub mod defect_prediction;
 pub mod developer_experience;
+pub mod expertise_profile;
 pub mod focus;
+pub mod focus_drift;
 pub mod growth;
 pub mod hotspot;
 pub mod index;
 pub mod inequality;
+pub mod interface_stability;
 pub mod knowledge;
 pub mod knowledge_distribution;
+pub mod knowledge_gini;
 pub mod knowledge_half_life;
 pub mod lifecycle;
 pub mod modularity;
 pub mod network;
+pub mod onboarding_velocity;
 pub mod ownership;
 pub mod ownership_fragmentation;
 pub mod profiles;
 pub mod release_rhythm;
+pub mod review_response;
+pub mod reviewer_recommendation;
 pub mod succession_readiness;
 pub mod survival;
+pub mod tech_debt_velocity;
 pub mod tech_distribution;
 pub mod tech_expertise;
 pub mod temporal;
@@ -245,6 +255,37 @@ pub struct InsightsReport {
     /// Developer succession readiness (Ricca et al. 2011, Rigby & Bird 2013).
     pub succession_readiness: succession_readiness::SuccessionReadinessReport,
 
+    // ---- Intelligence tab metrics (Session 8: M9-M32 advanced analytical lenses) ----
+    /// Code reviewer recommendation (Thongtanunam et al. 2015, Balachandran 2013).
+    pub reviewer_recommendation: reviewer_recommendation::ReviewerRecommendationReport,
+
+    /// Review response time distribution (Rigby & Storey 2011, Baysal et al. 2016).
+    pub review_response: review_response::ReviewResponseReport,
+
+    /// Contributor onboarding velocity (Zhou & Mockus 2012, Steinmacher et al. 2015).
+    pub onboarding_velocity: onboarding_velocity::OnboardingVelocityReport,
+
+    /// Interface stability score (Martin 2003, `MacCormack` et al. 2006).
+    pub interface_stability: interface_stability::InterfaceStabilityReport,
+
+    /// Technical debt velocity (Wehaibi et al. 2016, Maldonado & Shihab 2015).
+    pub tech_debt_velocity: tech_debt_velocity::TechDebtVelocityReport,
+
+    /// Development focus drift (Hassan 2008, D'Ambros & Lanza 2010).
+    pub focus_drift: focus_drift::FocusDriftReport,
+
+    /// AI-assisted change detection (Imai 2022, Dakhel et al. 2023).
+    pub ai_change_detection: ai_change_detection::AiChangeDetectionReport,
+
+    /// Knowledge distribution Gini coefficient (Yamashita & Moonen 2013, Greiler et al. 2015).
+    pub knowledge_gini: knowledge_gini::KnowledgeGiniReport,
+
+    /// Expertise breadth vs depth profiles (Mockus & Herbsleb 2002, Fritz et al. 2010).
+    pub expertise_profile: expertise_profile::ExpertiseProfileReport,
+
+    /// Cognitive load estimation (Fakhoury et al. 2019, Kapur & Musgrove 2023).
+    pub cognitive_load: cognitive_load::CognitiveLoadReport,
+
     /// Summary statistics.
     pub summary: SummaryStats,
 }
@@ -390,6 +431,19 @@ pub fn compute_insights(commits: &[CommitRecord]) -> InsightsReport {
         t_max,
     );
 
+    // Intelligence tab metrics (Session 8: M9-M32 advanced analytical lenses)
+    let reviewer_recommendation = accumulators.reviewer_recommendation_acc.finalize(t_max);
+    let review_response = accumulators.review_response_acc.finalize();
+    let onboarding_velocity = accumulators.onboarding_velocity_acc.finalize();
+    let interface_stability = accumulators.interface_stability_acc.finalize();
+    let tech_debt_velocity = accumulators.tech_debt_velocity_acc.finalize();
+    let focus_drift = accumulators.focus_drift_acc.finalize();
+    let ai_change_detection = accumulators.ai_change_detection_acc.finalize();
+    let knowledge_gini = knowledge_gini::compute_knowledge_gini(&accumulators.file_authors);
+    let expertise_profile =
+        expertise_profile::compute_expertise_profiles(&accumulators.file_authors);
+    let cognitive_load = accumulators.cognitive_load_acc.finalize();
+
     let summary = compute_summary(
         commits,
         &ownership,
@@ -442,6 +496,16 @@ pub fn compute_insights(commits: &[CommitRecord]) -> InsightsReport {
         knowledge_half_life: intelligence.knowledge_half_life,
         architectural_drift: intelligence.architectural_drift,
         succession_readiness: intelligence.succession_readiness,
+        reviewer_recommendation,
+        review_response,
+        onboarding_velocity,
+        interface_stability,
+        tech_debt_velocity,
+        focus_drift,
+        ai_change_detection,
+        knowledge_gini,
+        expertise_profile,
+        cognitive_load,
         summary,
     }
 }
@@ -830,6 +894,79 @@ fn empty_report() -> InsightsReport {
             adequate_succession_count: 0,
             total_files: 0,
         },
+        reviewer_recommendation: reviewer_recommendation::ReviewerRecommendationReport {
+            files: Vec::new(),
+            avg_reviewers_per_file: 0.0,
+            single_reviewer_count: 0,
+            total_analyzed: 0,
+        },
+        review_response: review_response::ReviewResponseReport {
+            files: Vec::new(),
+            team_p50_hours: 0.0,
+            team_p90_hours: 0.0,
+            slow_review_count: 0,
+            total_reviews: 0,
+        },
+        onboarding_velocity: onboarding_velocity::OnboardingVelocityReport {
+            developers: Vec::new(),
+            one_shot_count: 0,
+            fast_ramp_count: 0,
+            slow_ramp_count: 0,
+            sustained_count: 0,
+            median_days_to_core: 0.0,
+        },
+        interface_stability: interface_stability::InterfaceStabilityReport {
+            directories: Vec::new(),
+            avg_stability: 1.0,
+            volatile_count: 0,
+            stable_count: 0,
+            total_analyzed: 0,
+        },
+        tech_debt_velocity: tech_debt_velocity::TechDebtVelocityReport {
+            windows: Vec::new(),
+            trend: tech_debt_velocity::DebtTrend::Stable,
+            velocity_slope: 0.0,
+            overall_maintenance_ratio: 0.0,
+            overall_feature_ratio: 0.0,
+            overall_debt_reduction_ratio: 0.0,
+            total_classified: 0,
+        },
+        focus_drift: focus_drift::FocusDriftReport {
+            directories: Vec::new(),
+            rising_count: 0,
+            declining_count: 0,
+            abandoned_count: 0,
+            total_analyzed: 0,
+        },
+        ai_change_detection: ai_change_detection::AiChangeDetectionReport {
+            flagged_commits: Vec::new(),
+            author_summaries: Vec::new(),
+            total_flagged: 0,
+            total_analyzed: 0,
+            flagged_ratio: 0.0,
+        },
+        knowledge_gini: knowledge_gini::KnowledgeGiniReport {
+            developers: Vec::new(),
+            gini_coefficient: 0.0,
+            top_10_pct_share: 0.0,
+            top_20_pct_share: 0.0,
+            total_developers: 0,
+        },
+        expertise_profile: expertise_profile::ExpertiseProfileReport {
+            developers: Vec::new(),
+            specialist_deep_count: 0,
+            specialist_shallow_count: 0,
+            generalist_deep_count: 0,
+            generalist_shallow_count: 0,
+            median_breadth: 0.0,
+            median_depth: 0.0,
+        },
+        cognitive_load: cognitive_load::CognitiveLoadReport {
+            files: Vec::new(),
+            avg_load: 0.0,
+            high_load_count: 0,
+            total_analyzed: 0,
+        },
         summary: SummaryStats {
             total_commits: 0,
             total_files: 0,
@@ -872,10 +1009,19 @@ struct CommitAccumulators {
     tech_distribution_acc: tech_distribution::TechDistributionAccumulator,
     activity_heatmap_acc: activity_heatmap::ActivityHeatmapAccumulator,
     tech_expertise_acc: tech_expertise::TechExpertiseAccumulator,
-    // Intelligence tab accumulators
+    // Intelligence tab accumulators (M1-M7)
     commit_cohesion_acc: commit_cohesion::CommitCohesionAccumulator,
     commit_message_entropy_acc: commit_message_entropy::CommitMessageEntropyAccumulator,
     knowledge_half_life_acc: knowledge_half_life::KnowledgeHalfLifeAccumulator,
+    // Intelligence tab accumulators (M9-M32)
+    reviewer_recommendation_acc: reviewer_recommendation::ReviewerRecommendationAccumulator,
+    review_response_acc: review_response::ReviewResponseAccumulator,
+    onboarding_velocity_acc: onboarding_velocity::OnboardingVelocityAccumulator,
+    interface_stability_acc: interface_stability::InterfaceStabilityAccumulator,
+    tech_debt_velocity_acc: tech_debt_velocity::TechDebtVelocityAccumulator,
+    focus_drift_acc: focus_drift::FocusDriftAccumulator,
+    ai_change_detection_acc: ai_change_detection::AiChangeDetectionAccumulator,
+    cognitive_load_acc: cognitive_load::CognitiveLoadAccumulator,
 }
 
 /// Single pass over commits to populate all accumulators.
@@ -910,11 +1056,21 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
     let mut tech_distribution_acc = tech_distribution::TechDistributionAccumulator::new();
     let mut activity_heatmap_acc = activity_heatmap::ActivityHeatmapAccumulator::new();
     let mut tech_expertise_acc = tech_expertise::TechExpertiseAccumulator::new();
-    // Intelligence tab accumulators
+    // Intelligence tab accumulators (M1-M7)
     let mut commit_cohesion_acc = commit_cohesion::CommitCohesionAccumulator::new();
     let mut commit_message_entropy_acc =
         commit_message_entropy::CommitMessageEntropyAccumulator::new();
     let mut knowledge_half_life_acc = knowledge_half_life::KnowledgeHalfLifeAccumulator::new();
+    // Intelligence tab accumulators (M9-M32)
+    let mut reviewer_recommendation_acc =
+        reviewer_recommendation::ReviewerRecommendationAccumulator::new();
+    let mut review_response_acc = review_response::ReviewResponseAccumulator::new();
+    let mut onboarding_velocity_acc = onboarding_velocity::OnboardingVelocityAccumulator::new();
+    let mut interface_stability_acc = interface_stability::InterfaceStabilityAccumulator::new();
+    let mut tech_debt_velocity_acc = tech_debt_velocity::TechDebtVelocityAccumulator::new();
+    let mut focus_drift_acc = focus_drift::FocusDriftAccumulator::new();
+    let mut ai_change_detection_acc = ai_change_detection::AiChangeDetectionAccumulator::new();
+    let mut cognitive_load_acc = cognitive_load::CognitiveLoadAccumulator::new();
 
     for commit in commits {
         *unique_authors.entry(commit.author.clone()).or_insert(0) += 1;
@@ -955,7 +1111,7 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
         }
         defect_patterns_acc.record_commit(&commit.author, commit.timestamp, &file_paths);
 
-        // Intelligence tab accumulators: per-commit data
+        // Intelligence tab accumulators (M1-M7): per-commit data
         commit_cohesion_acc.record_commit(&commit.author, commit.timestamp, &file_paths);
         commit_message_entropy_acc.record_commit(
             &commit.author,
@@ -963,6 +1119,13 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
             commit.message.as_deref(),
             commit.files.len(),
         );
+
+        // Intelligence tab accumulators (M9-M32): per-commit data
+        onboarding_velocity_acc.record_commit(&commit.author, commit.timestamp, &file_paths);
+        tech_debt_velocity_acc.record_commit(commit.timestamp, commit.message.as_deref());
+        focus_drift_acc.record_commit(commit.timestamp, &file_paths);
+        ai_change_detection_acc.record_commit(&commit.author, commit.timestamp, &file_paths);
+        cognitive_load_acc.record_commit(&commit.author, commit.timestamp, &file_paths);
 
         // Session 5b accumulators: repository overview metrics
         activity_heatmap_acc.record_commit(commit.timestamp);
@@ -997,6 +1160,11 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
 
             // Intelligence tab: per-file knowledge tracking
             knowledge_half_life_acc.record_file(&commit.author, &file.path, commit.timestamp);
+
+            // Intelligence tab (M9-M32): per-file tracking
+            reviewer_recommendation_acc.record_file(&file.path, &commit.author, commit.timestamp);
+            review_response_acc.record_file(&file.path, &commit.author, commit.timestamp);
+            interface_stability_acc.record_file(&file.path, &commit.author);
 
             // Session 5 accumulators: per-file data
             churn_volatility_acc.record_file(&file.path, file.action, commit.timestamp);
@@ -1049,6 +1217,14 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
         commit_cohesion_acc,
         commit_message_entropy_acc,
         knowledge_half_life_acc,
+        reviewer_recommendation_acc,
+        review_response_acc,
+        onboarding_velocity_acc,
+        interface_stability_acc,
+        tech_debt_velocity_acc,
+        focus_drift_acc,
+        ai_change_detection_acc,
+        cognitive_load_acc,
     }
 }
 
