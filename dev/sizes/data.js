@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770940138838,
+  "lastUpdate": 1770946488662,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -6668,6 +6668,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1462850,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c54fcae6c6bf538108997eef9fc14f3b049e2934",
+          "message": "Merge pull request #300 from tomtom215/claude/resume-rource-research-vLtcE\n\nAdd Intelligence tab metrics M9-M32: reviewer recommendation, review response, onboarding velocity, interface stability, tech debt velocity, focus drift, AI change detection, knowledge Gini, expertise profile, and cognitive load",
+          "timestamp": "2026-02-13T02:32:06+01:00",
+          "tree_id": "5dfe3c023106f2422353e96862984b4cbbb1f48b",
+          "url": "https://github.com/tomtom215/rource/commit/c54fcae6c6bf538108997eef9fc14f3b049e2934"
+        },
+        "date": 1770946488019,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3915560,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 4133606,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1503699,
             "unit": "bytes"
           }
         ]
