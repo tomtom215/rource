@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770946488662,
+  "lastUpdate": 1770997855352,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -6707,6 +6707,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1503699,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e3ef26227e12ec1b208f884c4a1a728ab1cab97d",
+          "message": "Merge pull request #301 from tomtom215/claude/git-mining-insights-optimization-A3CQt\n\nAdd strategic tab: next-generation git mining insights",
+          "timestamp": "2026-02-13T16:47:52+01:00",
+          "tree_id": "8ce9263da339f42bd451d62fb8f1c5183e98112a",
+          "url": "https://github.com/tomtom215/rource/commit/e3ef26227e12ec1b208f884c4a1a728ab1cab97d"
+        },
+        "date": 1770997854053,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3915560,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 4217806,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1521726,
             "unit": "bytes"
           }
         ]
