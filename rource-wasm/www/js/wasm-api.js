@@ -978,3 +978,143 @@ export function getSuccessionReadiness() {
     }
     return null;
 }
+
+/**
+ * Returns code reviewer recommendations via ownership+recency+review scoring.
+ * Academic basis: Thongtanunam et al. (SANER 2015), Balachandran (ICSE 2013).
+ * @returns {Object|null} Reviewer recommendation data per file
+ */
+export function getReviewerRecommendation() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getReviewerRecommendation', () => rource.getReviewerRecommendation(), null);
+        return parseInsightsJson('getReviewerRecommendation', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns review response time distribution analysis.
+ * Academic basis: Rigby & Storey (ICSE 2011), Baysal et al. (ESE 2016).
+ * @returns {Object|null} Review response data with P50/P90 times
+ */
+export function getReviewResponse() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getReviewResponse', () => rource.getReviewResponse(), null);
+        return parseInsightsJson('getReviewResponse', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns contributor onboarding velocity analysis.
+ * Academic basis: Zhou & Mockus (ICSE 2012), Steinmacher et al. (ISSE 2015).
+ * @returns {Object|null} Onboarding data with developer classifications
+ */
+export function getOnboardingVelocity() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getOnboardingVelocity', () => rource.getOnboardingVelocity(), null);
+        return parseInsightsJson('getOnboardingVelocity', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns interface stability score analysis.
+ * Academic basis: Martin (2003 SDP/SAP), MacCormack et al. (Management Science 2006).
+ * @returns {Object|null} Interface stability data per directory boundary
+ */
+export function getInterfaceStability() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getInterfaceStability', () => rource.getInterfaceStability(), null);
+        return parseInsightsJson('getInterfaceStability', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns technical debt velocity trend analysis.
+ * Academic basis: Wehaibi et al. (SANER 2016), Maldonado & Shihab (MSR 2015).
+ * @returns {Object|null} Tech debt velocity with trend classification
+ */
+export function getTechDebtVelocity() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getTechDebtVelocity', () => rource.getTechDebtVelocity(), null);
+        return parseInsightsJson('getTechDebtVelocity', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns development focus drift analysis.
+ * Academic basis: Hassan (FoSE 2008), D'Ambros & Lanza (SCP 2010).
+ * @returns {Object|null} Focus drift data with per-directory trends
+ */
+export function getFocusDrift() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getFocusDrift', () => rource.getFocusDrift(), null);
+        return parseInsightsJson('getFocusDrift', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns AI-assisted change detection analysis.
+ * Academic basis: Imai (ESEM 2022), Dakhel et al. (JSS 2023), Vasilescu et al. (FSE 2015).
+ * @returns {Object|null} AI change detection data with flagged commits
+ */
+export function getAiChangeDetection() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getAiChangeDetection', () => rource.getAiChangeDetection(), null);
+        return parseInsightsJson('getAiChangeDetection', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns knowledge Gini coefficient analysis.
+ * Academic basis: Yamashita & Moonen (WCRE 2013), Greiler et al. (FSE 2015).
+ * @returns {Object|null} Knowledge inequality data with Gini coefficient
+ */
+export function getKnowledgeGini() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getKnowledgeGini', () => rource.getKnowledgeGini(), null);
+        return parseInsightsJson('getKnowledgeGini', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns expertise breadth vs depth profile analysis.
+ * Academic basis: Mockus & Herbsleb (ICSE 2002), Fritz et al. (FSE 2010).
+ * @returns {Object|null} Expertise profiles with quadrant classifications
+ */
+export function getExpertiseProfile() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getExpertiseProfile', () => rource.getExpertiseProfile(), null);
+        return parseInsightsJson('getExpertiseProfile', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns cognitive load estimation per file.
+ * Academic basis: Fakhoury et al. (ICPC 2019), Kapur & Musgrove (ESEC/FSE 2023).
+ * @returns {Object|null} Cognitive load data with per-file scores
+ */
+export function getCognitiveLoad() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getCognitiveLoad', () => rource.getCognitiveLoad(), null);
+        return parseInsightsJson('getCognitiveLoad', json, null);
+    }
+    return null;
+}

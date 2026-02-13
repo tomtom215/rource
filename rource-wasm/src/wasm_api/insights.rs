@@ -132,6 +132,17 @@ fn format_insights_json(report: &InsightsReport) -> String {
     write_knowledge_half_life_json(&mut json, report);
     write_architectural_drift_json(&mut json, report);
     write_succession_readiness_json(&mut json, report);
+    // Intelligence tab metrics (Session 8: M9-M32)
+    write_reviewer_recommendation_json(&mut json, report);
+    write_review_response_json(&mut json, report);
+    write_onboarding_velocity_json(&mut json, report);
+    write_interface_stability_json(&mut json, report);
+    write_tech_debt_velocity_json(&mut json, report);
+    write_focus_drift_json(&mut json, report);
+    write_ai_change_detection_json(&mut json, report);
+    write_knowledge_gini_json(&mut json, report);
+    write_expertise_profile_json(&mut json, report);
+    write_cognitive_load_json(&mut json, report);
     json.push('}');
     json
 }
@@ -1570,6 +1581,100 @@ impl Rource {
         json.push(']');
         Some(json)
     }
+
+    // ========================================================================
+    // Session 8: Intelligence tab M9-M32 WASM API methods
+    // ========================================================================
+
+    /// Returns code reviewer recommendations as JSON (M9).
+    #[wasm_bindgen(js_name = getReviewerRecommendation)]
+    pub fn get_reviewer_recommendation(&self) -> Option<String> {
+        let report = self.cached_report.as_ref()?;
+        let mut json = String::with_capacity(2048);
+        write_reviewer_recommendation_json_standalone(&mut json, report);
+        Some(json)
+    }
+
+    /// Returns review response time distribution as JSON (M19).
+    #[wasm_bindgen(js_name = getReviewResponse)]
+    pub fn get_review_response(&self) -> Option<String> {
+        let report = self.cached_report.as_ref()?;
+        let mut json = String::with_capacity(2048);
+        write_review_response_json_standalone(&mut json, report);
+        Some(json)
+    }
+
+    /// Returns contributor onboarding velocity as JSON (M20).
+    #[wasm_bindgen(js_name = getOnboardingVelocity)]
+    pub fn get_onboarding_velocity(&self) -> Option<String> {
+        let report = self.cached_report.as_ref()?;
+        let mut json = String::with_capacity(2048);
+        write_onboarding_velocity_json_standalone(&mut json, report);
+        Some(json)
+    }
+
+    /// Returns interface stability scores as JSON (M23).
+    #[wasm_bindgen(js_name = getInterfaceStability)]
+    pub fn get_interface_stability(&self) -> Option<String> {
+        let report = self.cached_report.as_ref()?;
+        let mut json = String::with_capacity(2048);
+        write_interface_stability_json_standalone(&mut json, report);
+        Some(json)
+    }
+
+    /// Returns technical debt velocity as JSON (M25).
+    #[wasm_bindgen(js_name = getTechDebtVelocity)]
+    pub fn get_tech_debt_velocity(&self) -> Option<String> {
+        let report = self.cached_report.as_ref()?;
+        let mut json = String::with_capacity(2048);
+        write_tech_debt_velocity_json_standalone(&mut json, report);
+        Some(json)
+    }
+
+    /// Returns development focus drift as JSON (M30).
+    #[wasm_bindgen(js_name = getFocusDrift)]
+    pub fn get_focus_drift(&self) -> Option<String> {
+        let report = self.cached_report.as_ref()?;
+        let mut json = String::with_capacity(2048);
+        write_focus_drift_json_standalone(&mut json, report);
+        Some(json)
+    }
+
+    /// Returns AI-assisted change detection as JSON (M31).
+    #[wasm_bindgen(js_name = getAiChangeDetection)]
+    pub fn get_ai_change_detection(&self) -> Option<String> {
+        let report = self.cached_report.as_ref()?;
+        let mut json = String::with_capacity(2048);
+        write_ai_change_detection_json_standalone(&mut json, report);
+        Some(json)
+    }
+
+    /// Returns knowledge Gini coefficient as JSON (M10).
+    #[wasm_bindgen(js_name = getKnowledgeGini)]
+    pub fn get_knowledge_gini(&self) -> Option<String> {
+        let report = self.cached_report.as_ref()?;
+        let mut json = String::with_capacity(2048);
+        write_knowledge_gini_json_standalone(&mut json, report);
+        Some(json)
+    }
+
+    /// Returns expertise profiles as JSON (M11).
+    #[wasm_bindgen(js_name = getExpertiseProfile)]
+    pub fn get_expertise_profile(&self) -> Option<String> {
+        let report = self.cached_report.as_ref()?;
+        let mut json = String::with_capacity(2048);
+        write_expertise_profile_json_standalone(&mut json, report);
+        Some(json)
+    }
+
+    /// Returns cognitive load estimates as JSON (M32).
+    #[wasm_bindgen(js_name = getCognitiveLoad)]
+    pub fn get_cognitive_load(&self) -> Option<String> {
+        let report = self.cached_report.as_ref()?;
+        let mut json = String::with_capacity(2048);
+        write_cognitive_load_json_standalone(&mut json, report);
+        Some(json)
+    }
 }
 
 // ============================================================================
@@ -2546,6 +2651,371 @@ fn write_architectural_drift_json_standalone(json: &mut String, report: &Insight
 fn write_succession_readiness_json_standalone(json: &mut String, report: &InsightsReport) {
     let mut buf = String::new();
     write_succession_readiness_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+// ============================================================================
+// Session 8 Intelligence tab JSON writers (M9-M32)
+// ============================================================================
+
+/// Appends reviewer recommendation data to JSON.
+fn write_reviewer_recommendation_json(json: &mut String, report: &InsightsReport) {
+    let rr = &report.reviewer_recommendation;
+    json.push_str(",\"reviewerRecommendation\":{\"files\":[");
+    for (i, f) in rr.files.iter().take(30).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        json.push_str("{\"path\":\"");
+        json.push_str(&escape_json(&f.path));
+        json.push_str("\",\"reviewers\":[");
+        for (j, r) in f.reviewers.iter().enumerate() {
+            if j > 0 {
+                json.push(',');
+            }
+            let _ = write!(
+                json,
+                r#"{{"author":"{}","score":{:.4},"ownership":{:.4},"recency":{:.4},"reviewFreq":{:.4}}}"#,
+                escape_json(&r.author),
+                r.score,
+                r.ownership,
+                r.recency,
+                r.review_freq,
+            );
+        }
+        json.push_str("]}");
+    }
+    let _ = write!(
+        json,
+        r#"],"avgReviewersPerFile":{:.2},"singleReviewerCount":{},"totalAnalyzed":{}}}"#,
+        rr.avg_reviewers_per_file, rr.single_reviewer_count, rr.total_analyzed,
+    );
+}
+
+/// Appends review response time data to JSON.
+fn write_review_response_json(json: &mut String, report: &InsightsReport) {
+    let rr = &report.review_response;
+    json.push_str(",\"reviewResponse\":{\"files\":[");
+    for (i, f) in rr.files.iter().take(30).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"path":"{}","p50Hours":{:.2},"p90Hours":{:.2},"reviewCount":{},"reviewerCount":{}}}"#,
+            escape_json(&f.path),
+            f.p50_hours,
+            f.p90_hours,
+            f.review_count,
+            f.reviewer_count,
+        );
+    }
+    let _ = write!(
+        json,
+        r#"],"teamP50Hours":{:.2},"teamP90Hours":{:.2},"slowReviewCount":{},"totalReviews":{}}}"#,
+        rr.team_p50_hours, rr.team_p90_hours, rr.slow_review_count, rr.total_reviews,
+    );
+}
+
+/// Appends onboarding velocity data to JSON.
+fn write_onboarding_velocity_json(json: &mut String, report: &InsightsReport) {
+    let ov = &report.onboarding_velocity;
+    json.push_str(",\"onboardingVelocity\":{\"developers\":[");
+    for (i, d) in ov.developers.iter().take(30).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"author":"{}","type":"{}","totalCommits":{},"uniqueFiles":{},"activeSpanDays":{:.1},"week14Commits":{},"week58Commits":{}}}"#,
+            escape_json(&d.author),
+            d.onboarding_type.label(),
+            d.total_commits,
+            d.unique_files,
+            d.active_span_days,
+            d.week1_4_commits,
+            d.week5_8_commits,
+        );
+    }
+    let _ = write!(
+        json,
+        r#"],"oneShotCount":{},"fastRampCount":{},"slowRampCount":{},"sustainedCount":{},"medianDaysToCore":{:.1}}}"#,
+        ov.one_shot_count,
+        ov.fast_ramp_count,
+        ov.slow_ramp_count,
+        ov.sustained_count,
+        ov.median_days_to_core,
+    );
+}
+
+/// Appends interface stability data to JSON.
+fn write_interface_stability_json(json: &mut String, report: &InsightsReport) {
+    let is = &report.interface_stability;
+    json.push_str(",\"interfaceStability\":{\"directories\":[");
+    for (i, d) in is.directories.iter().take(30).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"directory":"{}","stability":{:.4},"totalChanges":{},"crossBoundaryChanges":{},"externalContributorCount":{},"fileCount":{}}}"#,
+            escape_json(&d.directory),
+            d.stability,
+            d.total_changes,
+            d.cross_boundary_changes,
+            d.external_contributor_count,
+            d.file_count,
+        );
+    }
+    let _ = write!(
+        json,
+        r#"],"avgStability":{:.4},"volatileCount":{},"stableCount":{},"totalAnalyzed":{}}}"#,
+        is.avg_stability, is.volatile_count, is.stable_count, is.total_analyzed,
+    );
+}
+
+/// Appends technical debt velocity data to JSON.
+fn write_tech_debt_velocity_json(json: &mut String, report: &InsightsReport) {
+    let td = &report.tech_debt_velocity;
+    json.push_str(",\"techDebtVelocity\":{\"windows\":[");
+    for (i, w) in td.windows.iter().take(24).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"start":{},"end":{},"maintenanceRatio":{:.4},"featureRatio":{:.4},"debtReductionRatio":{:.4},"totalCommits":{}}}"#,
+            w.start,
+            w.end,
+            w.maintenance_ratio,
+            w.feature_ratio,
+            w.debt_reduction_ratio,
+            w.total_commits,
+        );
+    }
+    let _ = write!(
+        json,
+        r#"],"trend":"{}","velocitySlope":{:.6},"overallMaintenanceRatio":{:.4},"overallFeatureRatio":{:.4},"overallDebtReductionRatio":{:.4},"totalClassified":{}}}"#,
+        td.trend.label(),
+        td.velocity_slope,
+        td.overall_maintenance_ratio,
+        td.overall_feature_ratio,
+        td.overall_debt_reduction_ratio,
+        td.total_classified,
+    );
+}
+
+/// Appends focus drift data to JSON.
+fn write_focus_drift_json(json: &mut String, report: &InsightsReport) {
+    let fd = &report.focus_drift;
+    json.push_str(",\"focusDrift\":{\"directories\":[");
+    for (i, d) in fd.directories.iter().take(30).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"directory":"{}","trend":"{}","currentShare":{:.4},"previousShare":{:.4},"shareDelta":{:.4},"totalCommits":{}}}"#,
+            escape_json(&d.directory),
+            d.trend.label(),
+            d.current_share,
+            d.previous_share,
+            d.share_delta,
+            d.total_commits,
+        );
+    }
+    let _ = write!(
+        json,
+        r#"],"risingCount":{},"decliningCount":{},"abandonedCount":{},"totalAnalyzed":{}}}"#,
+        fd.rising_count, fd.declining_count, fd.abandoned_count, fd.total_analyzed,
+    );
+}
+
+/// Appends AI change detection data to JSON.
+fn write_ai_change_detection_json(json: &mut String, report: &InsightsReport) {
+    let ai = &report.ai_change_detection;
+    json.push_str(",\"aiChangeDetection\":{\"flaggedCommits\":[");
+    for (i, c) in ai.flagged_commits.iter().take(20).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"author":"{}","timestamp":{},"filesTouched":{},"dirsTouched":{},"anomalyScore":{:.4},"reason":"{}"}}"#,
+            escape_json(&c.author),
+            c.timestamp,
+            c.files_touched,
+            c.dirs_touched,
+            c.anomaly_score,
+            escape_json(&c.reason),
+        );
+    }
+    json.push_str("],\"authorSummaries\":[");
+    for (i, s) in ai.author_summaries.iter().take(20).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"author":"{}","flaggedCount":{},"totalCommits":{},"flaggedRatio":{:.4},"baselineMeanFiles":{:.2}}}"#,
+            escape_json(&s.author),
+            s.flagged_count,
+            s.total_commits,
+            s.flagged_ratio,
+            s.baseline_mean_files,
+        );
+    }
+    let _ = write!(
+        json,
+        r#"],"totalFlagged":{},"totalAnalyzed":{},"flaggedRatio":{:.4}}}"#,
+        ai.total_flagged, ai.total_analyzed, ai.flagged_ratio,
+    );
+}
+
+/// Appends knowledge Gini data to JSON.
+fn write_knowledge_gini_json(json: &mut String, report: &InsightsReport) {
+    let kg = &report.knowledge_gini;
+    json.push_str(",\"knowledgeGini\":{\"developers\":[");
+    for (i, d) in kg.developers.iter().take(30).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"author":"{}","filesTouched":{},"totalCommits":{},"knowledgeShare":{:.4}}}"#,
+            escape_json(&d.author),
+            d.files_touched,
+            d.total_commits,
+            d.knowledge_share,
+        );
+    }
+    let _ = write!(
+        json,
+        r#"],"giniCoefficient":{:.4},"top10PctShare":{:.4},"top20PctShare":{:.4},"totalDevelopers":{}}}"#,
+        kg.gini_coefficient, kg.top_10_pct_share, kg.top_20_pct_share, kg.total_developers,
+    );
+}
+
+/// Appends expertise profile data to JSON.
+fn write_expertise_profile_json(json: &mut String, report: &InsightsReport) {
+    let ep = &report.expertise_profile;
+    json.push_str(",\"expertiseProfile\":{\"developers\":[");
+    for (i, d) in ep.developers.iter().take(30).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"author":"{}","quadrant":"{}","breadth":{:.4},"depth":{:.2},"uniqueFiles":{},"totalCommits":{}}}"#,
+            escape_json(&d.author),
+            d.quadrant.label(),
+            d.breadth,
+            d.depth,
+            d.unique_files,
+            d.total_commits,
+        );
+    }
+    let _ = write!(
+        json,
+        r#"],"specialistDeepCount":{},"specialistShallowCount":{},"generalistDeepCount":{},"generalistShallowCount":{},"medianBreadth":{:.4},"medianDepth":{:.2}}}"#,
+        ep.specialist_deep_count,
+        ep.specialist_shallow_count,
+        ep.generalist_deep_count,
+        ep.generalist_shallow_count,
+        ep.median_breadth,
+        ep.median_depth,
+    );
+}
+
+/// Appends cognitive load data to JSON.
+fn write_cognitive_load_json(json: &mut String, report: &InsightsReport) {
+    let cl = &report.cognitive_load;
+    json.push_str(",\"cognitiveLoad\":{\"files\":[");
+    for (i, f) in cl.files.iter().take(30).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"path":"{}","loadScore":{:.4},"couplingComponent":{:.4},"dirSpreadComponent":{:.4},"authorDiversityComponent":{:.4},"temporalComponent":{:.4},"coupledFileCount":{},"authorCount":{}}}"#,
+            escape_json(&f.path),
+            f.load_score,
+            f.coupling_component,
+            f.dir_spread_component,
+            f.author_diversity_component,
+            f.temporal_component,
+            f.coupled_file_count,
+            f.author_count,
+        );
+    }
+    let _ = write!(
+        json,
+        r#"],"avgLoad":{:.4},"highLoadCount":{},"totalAnalyzed":{}}}"#,
+        cl.avg_load, cl.high_load_count, cl.total_analyzed,
+    );
+}
+
+// ============================================================================
+// Session 8: Standalone JSON writers for individual WASM API endpoints
+// ============================================================================
+
+fn write_reviewer_recommendation_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_reviewer_recommendation_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+fn write_review_response_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_review_response_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+fn write_onboarding_velocity_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_onboarding_velocity_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+fn write_interface_stability_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_interface_stability_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+fn write_tech_debt_velocity_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_tech_debt_velocity_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+fn write_focus_drift_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_focus_drift_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+fn write_ai_change_detection_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_ai_change_detection_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+fn write_knowledge_gini_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_knowledge_gini_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+fn write_expertise_profile_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_expertise_profile_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+fn write_cognitive_load_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_cognitive_load_json(&mut buf, report);
     json.push_str(buf.trim_start_matches(','));
 }
 

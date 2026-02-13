@@ -84,6 +84,26 @@ const CITE = {
     maqbool2007: { text: 'Maqbool & Babri 2007, JSS', url: 'https://doi.org/10.1016/j.jss.2006.10.029' },
     raghavan2007: { text: 'Raghavan, Albert & Kumara 2007, Phys Rev E', url: 'https://doi.org/10.1103/PhysRevE.76.036106' },
     ricca2011: { text: 'Ricca et al. 2011, JSS', url: 'https://doi.org/10.1016/j.jss.2011.03.033' },
+    // Intelligence tab M8-M32 citations
+    thongtanunam2015: { text: 'Thongtanunam et al. 2015, SANER', url: 'https://doi.org/10.1109/SANER.2015.7081824' },
+    balachandran2013: { text: 'Balachandran 2013, ICSE', url: 'https://doi.org/10.1109/ICSE.2013.6606642' },
+    rigby2011: { text: 'Rigby & Storey 2011, ICSE', url: 'https://doi.org/10.1145/1985793.1985867' },
+    baysal2016: { text: 'Baysal et al. 2016, ESE', url: 'https://doi.org/10.1007/s10664-015-9404-2' },
+    zhou2012: { text: 'Zhou & Mockus 2012, ICSE', url: 'https://doi.org/10.1109/ICSE.2012.6227164' },
+    steinmacher2015: { text: 'Steinmacher et al. 2015, ISSE', url: 'https://doi.org/10.1007/s11219-014-9236-x' },
+    martin2003: { text: 'Martin 2003, Agile Software Development', url: '' },
+    wehaibi2016: { text: 'Wehaibi et al. 2016, SANER', url: 'https://doi.org/10.1109/SANER.2016.95' },
+    maldonado2015: { text: 'Maldonado & Shihab 2015, MSR', url: 'https://doi.org/10.1109/MSR.2015.14' },
+    hassan2008: { text: 'Hassan 2008, FoSE', url: 'https://doi.org/10.1145/1370175.1370177' },
+    dambros2010: { text: "D'Ambros & Lanza 2010, SCP", url: 'https://doi.org/10.1016/j.scico.2009.04.007' },
+    imai2022: { text: 'Imai 2022, ESEM', url: 'https://doi.org/10.1145/3544902.3546244' },
+    dakhel2023: { text: 'Dakhel et al. 2023, JSS', url: 'https://doi.org/10.1016/j.jss.2023.111734' },
+    vasilescu2015: { text: 'Vasilescu et al. 2015, FSE', url: 'https://doi.org/10.1145/2786805.2786850' },
+    yamashita2013: { text: 'Yamashita & Moonen 2013, WCRE', url: 'https://doi.org/10.1109/WCRE.2013.6671299' },
+    mockus2002_expertise2: { text: 'Mockus & Herbsleb 2002, ICSE', url: 'https://doi.org/10.1145/581339.581401' },
+    fritz2010_expertise: { text: 'Fritz et al. 2010, FSE', url: 'https://doi.org/10.1145/1882291.1882300' },
+    fakhoury2019: { text: 'Fakhoury et al. 2019, ICPC', url: 'https://doi.org/10.1109/ICPC.2019.00014' },
+    kapur2023: { text: 'Kapur & Musgrove 2023, ESEC/FSE', url: 'https://doi.org/10.1145/3611643.3616295' },
 };
 
 /**
@@ -810,7 +830,12 @@ export function renderIntelligenceTab(cachedData) {
     parts.push(renderMetricNav([
         'Contextual Complexity', 'Commit Cohesion', 'Change Propagation',
         'Commit Message Quality', 'Knowledge Half-Life',
-        'Architectural Drift', 'Succession Readiness'
+        'Architectural Drift', 'Succession Readiness',
+        'Reviewer Recommendation', 'Review Response',
+        'Onboarding Velocity', 'Interface Stability',
+        'Tech Debt Velocity', 'Focus Drift',
+        'AI Change Detection', 'Knowledge Gini',
+        'Expertise Profile', 'Cognitive Load'
     ]));
 
     // M1: Contextual Complexity
@@ -931,6 +956,169 @@ export function renderIntelligenceTab(cachedData) {
         ));
     }
 
+    // M9: Reviewer Recommendation
+    const rr = cachedData.reviewerRecommendation;
+    if (rr) {
+        const files = rr.files || [];
+        const topFiles = files.slice(0, 15);
+        parts.push(renderMetricSection(
+            'Reviewer Recommendation',
+            'Recommends the best code reviewers for each file using a composite score of ownership, recency, and review frequency.',
+            [CITE.thongtanunam2015, CITE.balachandran2013],
+            topFiles.length > 0
+                ? renderReviewerRecommendationTable(topFiles)
+                : emptyState('No reviewer data', 'Requires files with multiple contributors.'),
+            `${rr.singleReviewerCount || 0} files depend on a single reviewer. Average ${formatFixed(rr.avgReviewersPerFile, 1)} reviewers per file.`
+        ));
+    }
+
+    // M19: Review Response
+    const rrsp = cachedData.reviewResponse;
+    if (rrsp) {
+        const files = rrsp.files || [];
+        const topFiles = files.slice(0, 15);
+        parts.push(renderMetricSection(
+            'Review Response',
+            'Measures review turnaround time by tracking how quickly a file gets touched by a different author after a change \u2014 a proxy for code review responsiveness.',
+            [CITE.rigby2011, CITE.baysal2016],
+            topFiles.length > 0
+                ? renderReviewResponseTable(topFiles)
+                : emptyState('No review response data', 'Requires files touched by multiple authors.'),
+            `Team P50: ${formatFixed(rrsp.teamP50Hours, 1)}h. P90: ${formatFixed(rrsp.teamP90Hours, 1)}h.`
+        ));
+    }
+
+    // M20: Onboarding Velocity
+    const ob = cachedData.onboardingVelocity;
+    if (ob) {
+        const devs = ob.developers || [];
+        const topDevs = devs.slice(0, 15);
+        parts.push(renderMetricSection(
+            'Onboarding Velocity',
+            'Measures how quickly new contributors ramp up by comparing commit activity in their first 4 weeks vs weeks 5\u20138. Classifies contributors as one-shot, slow-ramp, fast-ramp, or sustained.',
+            [CITE.zhou2012, CITE.steinmacher2015],
+            topDevs.length > 0
+                ? renderOnboardingTable(topDevs)
+                : emptyState('No onboarding data', 'Requires contributors with commit history.'),
+            `${ob.oneShotCount || 0} one-shot, ${ob.fastRampCount || 0} fast-ramp, ${ob.slowRampCount || 0} slow-ramp, ${ob.sustainedCount || 0} sustained. Median days to core: ${formatFixed(ob.medianDaysToCore, 0)}.`
+        ));
+    }
+
+    // M23: Interface Stability
+    const is = cachedData.interfaceStability;
+    if (is) {
+        const dirs = is.directories || [];
+        const topDirs = dirs.slice(0, 15);
+        const stabilityLabel = (is.avgStability || 0) > 0.8 ? 'stable boundaries' : (is.avgStability || 0) > 0.5 ? 'moderate stability' : 'volatile boundaries';
+        parts.push(renderMetricSection(
+            'Interface Stability',
+            'Measures how stable module boundaries are. Stable interfaces allow independent development; unstable ones force coordination overhead.',
+            [CITE.martin2003, CITE.maccormack2006],
+            topDirs.length > 0
+                ? renderInterfaceStabilityTable(topDirs)
+                : emptyState('No interface stability data', 'Requires files in multiple directories with shared contributors.'),
+            `Average stability: ${formatFixed(is.avgStability, 3)} (${stabilityLabel}). ${is.volatileCount || 0} volatile, ${is.stableCount || 0} stable out of ${is.totalAnalyzed || 0} directories.`
+        ));
+    }
+
+    // M25: Tech Debt Velocity
+    const tdv = cachedData.techDebtVelocity;
+    if (tdv) {
+        const windows = tdv.windows || [];
+        const trendLabel = tdv.trend || 'Stable';
+        parts.push(renderMetricSection(
+            'Tech Debt Velocity',
+            'Tracks whether maintenance burden is accumulating or being paid down over time by classifying commits as maintenance, feature, or debt-reduction work.',
+            [CITE.wehaibi2016, CITE.maldonado2015],
+            windows.length > 0
+                ? renderTechDebtTable(windows)
+                : emptyState('No tech debt data', 'Requires commits with descriptive messages over 60+ days.'),
+            `Trend: ${trendLabel} (slope: ${formatFixed(tdv.velocitySlope, 4)}). Overall maintenance ratio: ${formatPercentage(tdv.overallMaintenanceRatio)}. Feature: ${formatPercentage(tdv.overallFeatureRatio)}. Debt reduction: ${formatPercentage(tdv.overallDebtReductionRatio)}.`
+        ));
+    }
+
+    // M30: Focus Drift
+    const fd = cachedData.focusDrift;
+    if (fd) {
+        const dirs = fd.directories || [];
+        const topDirs = dirs.slice(0, 15);
+        parts.push(renderMetricSection(
+            'Focus Drift',
+            'Tracks which areas of the codebase are getting more or less development attention over time, revealing shifting priorities and potential neglect.',
+            [CITE.hassan2008, CITE.dambros2010],
+            topDirs.length > 0
+                ? renderFocusDriftTable(topDirs)
+                : emptyState('No focus drift data', 'Requires commits spanning a meaningful time range.'),
+            `${fd.risingCount || 0} rising, ${fd.decliningCount || 0} declining, ${fd.abandonedCount || 0} abandoned out of ${fd.totalAnalyzed || 0} directories.`
+        ));
+    }
+
+    // M31: AI Change Detection
+    const ai = cachedData.aiChangeDetection;
+    if (ai) {
+        const flagged = ai.flaggedCommits || [];
+        const topFlagged = flagged.slice(0, 15);
+        parts.push(renderMetricSection(
+            'AI Change Detection',
+            'Detects commits that deviate significantly from an author\u2019s established baseline \u2014 unusual breadth of file changes or directory spread may indicate AI-assisted generation.',
+            [CITE.imai2022, CITE.dakhel2023, CITE.vasilescu2015],
+            topFlagged.length > 0
+                ? renderAiDetectionTable(topFlagged)
+                : emptyState('No anomalous commits detected', 'All commits are within normal patterns for their authors.'),
+            `${ai.totalFlagged || 0} flagged out of ${ai.totalAnalyzed || 0} commits (${formatPercentage(ai.flaggedRatio)}).`
+        ));
+    }
+
+    // M10: Knowledge Gini
+    const kg = cachedData.knowledgeGini;
+    if (kg) {
+        const devs = kg.developers || [];
+        const topDevs = devs.slice(0, 15);
+        const giniLabel = (kg.giniCoefficient || 0) > 0.6 ? 'high inequality' : (kg.giniCoefficient || 0) > 0.3 ? 'moderate inequality' : 'well-distributed';
+        parts.push(renderMetricSection(
+            'Knowledge Gini',
+            'Measures inequality of code knowledge across team members using the Gini coefficient. High values indicate knowledge hoarding; low values mean well-distributed expertise.',
+            [CITE.yamashita2013, CITE.greiler2015],
+            topDevs.length > 0
+                ? renderKnowledgeGiniTable(topDevs)
+                : emptyState('No knowledge distribution data', 'Requires files with multiple contributors.'),
+            `Gini coefficient: ${formatFixed(kg.giniCoefficient, 3)} (${giniLabel}). Top 10% hold ${formatPercentage(kg.top10PctShare)}. Top 20% hold ${formatPercentage(kg.top20PctShare)}. ${kg.totalDevelopers || 0} developers.`
+        ));
+    }
+
+    // M11: Expertise Profile
+    const ep = cachedData.expertiseProfile;
+    if (ep) {
+        const devs = ep.developers || [];
+        const topDevs = devs.slice(0, 15);
+        parts.push(renderMetricSection(
+            'Expertise Profile',
+            'Classifies developers as specialists (deep in few files) or generalists (shallow across many). Teams need both \u2014 the quadrant distribution reveals team shape.',
+            [CITE.mockus2002_expertise2, CITE.fritz2010_expertise],
+            topDevs.length > 0
+                ? renderExpertiseProfileTable(topDevs)
+                : emptyState('No expertise data', 'Requires files with authorship data.'),
+            `${ep.specialistDeepCount || 0} specialist-deep, ${ep.specialistShallowCount || 0} specialist-shallow, ${ep.generalistDeepCount || 0} generalist-deep, ${ep.generalistShallowCount || 0} generalist-shallow. Median breadth: ${formatFixed(ep.medianBreadth, 3)}, depth: ${formatFixed(ep.medianDepth, 1)}.`
+        ));
+    }
+
+    // M32: Cognitive Load
+    const cl = cachedData.cognitiveLoad;
+    if (cl) {
+        const files = cl.files || [];
+        const topFiles = files.slice(0, 15);
+        const loadLabel = (cl.avgLoad || 0) > 0.7 ? 'high cognitive burden' : (cl.avgLoad || 0) > 0.4 ? 'moderate' : 'manageable';
+        parts.push(renderMetricSection(
+            'Cognitive Load',
+            'Estimates the cognitive complexity a developer must manage when working on a file, based on coupling degree, directory spread, author diversity, and temporal dispersion.',
+            [CITE.fakhoury2019, CITE.kapur2023],
+            topFiles.length > 0
+                ? renderCognitiveLoadTable(topFiles)
+                : emptyState('No cognitive load data', 'Requires files with co-change history.'),
+            `Average load: ${formatFixed(cl.avgLoad, 3)} (${loadLabel}). ${cl.highLoadCount || 0} high-load files out of ${cl.totalAnalyzed || 0} analyzed.`
+        ));
+    }
+
     return parts.join('');
 }
 
@@ -1045,6 +1233,164 @@ function renderSuccessionReadinessTable(files) {
         html += `<td>${escapeHtml(f.primaryContributor || '\u2014')}</td>`;
         html += `<td>${escapeHtml(f.bestSuccessor || 'None')}</td>`;
         html += `<td>${formatFixed(f.successionGap, 3)}</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+    return html;
+}
+
+// ============================================================================
+// M8-M32 Table Renderers
+// ============================================================================
+
+function renderReviewerRecommendationTable(files) {
+    let html = '<div class="insights-table-wrapper"><table class="insights-table"><thead><tr>';
+    html += '<th>File</th><th>Top Reviewer</th><th>Score</th><th>Ownership</th><th>Recency</th>';
+    html += '</tr></thead><tbody>';
+    for (const f of files) {
+        const top = (f.reviewers || [])[0];
+        html += `<tr><td title="${escapeHtml(f.path)}">${escapeHtml(truncatePath(f.path))}</td>`;
+        html += `<td>${escapeHtml(top ? top.author : '\u2014')}</td>`;
+        html += `<td>${top ? formatFixed(top.score, 3) : '\u2014'}</td>`;
+        html += `<td>${top ? formatFixed(top.ownership, 3) : '\u2014'}</td>`;
+        html += `<td>${top ? formatFixed(top.recency, 3) : '\u2014'}</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+    return html;
+}
+
+function renderReviewResponseTable(files) {
+    let html = '<div class="insights-table-wrapper"><table class="insights-table"><thead><tr>';
+    html += '<th>File</th><th>Median (h)</th><th>P90 (h)</th><th>Reviewers</th><th>Responses</th>';
+    html += '</tr></thead><tbody>';
+    for (const f of files) {
+        html += `<tr><td title="${escapeHtml(f.path)}">${escapeHtml(truncatePath(f.path))}</td>`;
+        html += `<td>${formatFixed(f.medianResponseHours, 1)}</td>`;
+        html += `<td>${formatFixed(f.p90ResponseHours, 1)}</td>`;
+        html += `<td>${f.uniqueReviewers || 0}</td>`;
+        html += `<td>${f.totalResponses || 0}</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+    return html;
+}
+
+function renderOnboardingTable(devs) {
+    let html = '<div class="insights-table-wrapper"><table class="insights-table"><thead><tr>';
+    html += '<th>Developer</th><th>Type</th><th>Commits</th><th>W1\u20134</th><th>W5\u20138</th><th>Files</th>';
+    html += '</tr></thead><tbody>';
+    for (const d of devs) {
+        html += `<tr><td>${escapeHtml(d.author)}</td>`;
+        html += `<td>${escapeHtml(d.onboardingType)}</td>`;
+        html += `<td>${d.totalCommits || 0}</td>`;
+        html += `<td>${d.week14Commits || 0}</td>`;
+        html += `<td>${d.week58Commits || 0}</td>`;
+        html += `<td>${d.uniqueFiles || 0}</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+    return html;
+}
+
+function renderInterfaceStabilityTable(dirs) {
+    let html = '<div class="insights-table-wrapper"><table class="insights-table"><thead><tr>';
+    html += '<th>Directory</th><th>Stability</th><th>Changes</th><th>Cross-Boundary</th><th>External</th>';
+    html += '</tr></thead><tbody>';
+    for (const d of dirs) {
+        const stabClass = (d.stability || 0) < 0.5 ? ' class="insights-cell-warn"' : '';
+        html += `<tr><td>${escapeHtml(d.directory)}</td>`;
+        html += `<td${stabClass}>${formatFixed(d.stability, 3)}</td>`;
+        html += `<td>${d.totalChanges || 0}</td>`;
+        html += `<td>${d.crossBoundaryChanges || 0}</td>`;
+        html += `<td>${d.externalContributorCount || 0}</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+    return html;
+}
+
+function renderTechDebtTable(windows) {
+    let html = '<div class="insights-table-wrapper"><table class="insights-table"><thead><tr>';
+    html += '<th>Window</th><th>Maint %</th><th>Feature %</th><th>Debt Red %</th><th>Commits</th>';
+    html += '</tr></thead><tbody>';
+    for (let i = 0; i < windows.length; i++) {
+        const w = windows[i];
+        html += `<tr><td>Window ${i + 1}</td>`;
+        html += `<td>${formatPercentage(w.maintenanceRatio)}</td>`;
+        html += `<td>${formatPercentage(w.featureRatio)}</td>`;
+        html += `<td>${formatPercentage(w.debtReductionRatio)}</td>`;
+        html += `<td>${w.totalCommits || 0}</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+    return html;
+}
+
+function renderFocusDriftTable(dirs) {
+    let html = '<div class="insights-table-wrapper"><table class="insights-table"><thead><tr>';
+    html += '<th>Directory</th><th>Trend</th><th>Current</th><th>Previous</th><th>Delta</th>';
+    html += '</tr></thead><tbody>';
+    for (const d of dirs) {
+        html += `<tr><td>${escapeHtml(d.directory)}</td>`;
+        html += `<td>${escapeHtml(d.trend)}</td>`;
+        html += `<td>${formatPercentage(d.currentShare)}</td>`;
+        html += `<td>${formatPercentage(d.previousShare)}</td>`;
+        html += `<td>${formatFixed(d.shareDelta, 3)}</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+    return html;
+}
+
+function renderAiDetectionTable(commits) {
+    let html = '<div class="insights-table-wrapper"><table class="insights-table"><thead><tr>';
+    html += '<th>Author</th><th>Score</th><th>Files</th><th>Dirs</th><th>Reason</th>';
+    html += '</tr></thead><tbody>';
+    for (const c of commits) {
+        html += `<tr><td>${escapeHtml(c.author)}</td>`;
+        html += `<td>${formatFixed(c.anomalyScore, 2)}</td>`;
+        html += `<td>${c.filesTouched || 0}</td>`;
+        html += `<td>${c.dirsTouched || 0}</td>`;
+        html += `<td title="${escapeHtml(c.reason)}">${escapeHtml((c.reason || '').substring(0, 50))}</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+    return html;
+}
+
+function renderKnowledgeGiniTable(devs) {
+    let html = '<div class="insights-table-wrapper"><table class="insights-table"><thead><tr>';
+    html += '<th>Developer</th><th>Share</th><th>Commits</th><th>Files</th>';
+    html += '</tr></thead><tbody>';
+    for (const d of devs) {
+        html += `<tr><td>${escapeHtml(d.author)}</td>`;
+        html += `<td>${formatPercentage(d.knowledgeShare)}</td>`;
+        html += `<td>${d.totalCommits || 0}</td>`;
+        html += `<td>${d.filesTouched || 0}</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+    return html;
+}
+
+function renderExpertiseProfileTable(devs) {
+    let html = '<div class="insights-table-wrapper"><table class="insights-table"><thead><tr>';
+    html += '<th>Developer</th><th>Quadrant</th><th>Breadth</th><th>Depth</th><th>Commits</th>';
+    html += '</tr></thead><tbody>';
+    for (const d of devs) {
+        html += `<tr><td>${escapeHtml(d.author)}</td>`;
+        html += `<td>${escapeHtml(d.quadrant)}</td>`;
+        html += `<td>${formatFixed(d.breadth, 3)}</td>`;
+        html += `<td>${formatFixed(d.depth, 1)}</td>`;
+        html += `<td>${d.totalCommits || 0}</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+    return html;
+}
+
+function renderCognitiveLoadTable(files) {
+    let html = '<div class="insights-table-wrapper"><table class="insights-table"><thead><tr>';
+    html += '<th>File</th><th>Load</th><th>Coupling</th><th>Spread</th><th>Authors</th>';
+    html += '</tr></thead><tbody>';
+    for (const f of files) {
+        const loadClass = (f.loadScore || 0) > 0.7 ? ' class="insights-cell-warn"' : '';
+        html += `<tr><td title="${escapeHtml(f.path)}">${escapeHtml(truncatePath(f.path))}</td>`;
+        html += `<td${loadClass}>${formatFixed(f.loadScore, 3)}</td>`;
+        html += `<td>${formatFixed(f.couplingComponent, 3)}</td>`;
+        html += `<td>${formatFixed(f.dirSpreadComponent, 3)}</td>`;
+        html += `<td>${f.authorCount || 0}</td></tr>`;
     }
     html += '</tbody></table></div>';
     return html;

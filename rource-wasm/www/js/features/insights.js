@@ -34,7 +34,11 @@ import {
     getTechDistribution, getActivityHeatmap, getTechExpertise,
     getContextualComplexity, getCommitCohesion, getChangePropagation,
     getCommitMessageEntropy, getKnowledgeHalfLife,
-    getArchitecturalDrift, getSuccessionReadiness
+    getArchitecturalDrift, getSuccessionReadiness,
+    getReviewerRecommendation, getReviewResponse, getOnboardingVelocity,
+    getInterfaceStability, getTechDebtVelocity, getFocusDrift,
+    getAiChangeDetection, getKnowledgeGini, getExpertiseProfile,
+    getCognitiveLoad
 } from '../wasm-api.js';
 import { formatInt, escapeHtml } from './insights-utils.js';
 import {
@@ -272,6 +276,16 @@ function ensureTabData(tabName) {
             if (!cachedData.knowledgeHalfLife) cachedData.knowledgeHalfLife = unwrap(getKnowledgeHalfLife(), 'knowledgeHalfLife');
             if (!cachedData.architecturalDrift) cachedData.architecturalDrift = unwrap(getArchitecturalDrift(), 'architecturalDrift');
             if (!cachedData.successionReadiness) cachedData.successionReadiness = unwrap(getSuccessionReadiness(), 'successionReadiness');
+            if (!cachedData.reviewerRecommendation) cachedData.reviewerRecommendation = unwrap(getReviewerRecommendation(), 'reviewerRecommendation');
+            if (!cachedData.reviewResponse) cachedData.reviewResponse = unwrap(getReviewResponse(), 'reviewResponse');
+            if (!cachedData.onboardingVelocity) cachedData.onboardingVelocity = unwrap(getOnboardingVelocity(), 'onboardingVelocity');
+            if (!cachedData.interfaceStability) cachedData.interfaceStability = unwrap(getInterfaceStability(), 'interfaceStability');
+            if (!cachedData.techDebtVelocity) cachedData.techDebtVelocity = unwrap(getTechDebtVelocity(), 'techDebtVelocity');
+            if (!cachedData.focusDrift) cachedData.focusDrift = unwrap(getFocusDrift(), 'focusDrift');
+            if (!cachedData.aiChangeDetection) cachedData.aiChangeDetection = unwrap(getAiChangeDetection(), 'aiChangeDetection');
+            if (!cachedData.knowledgeGini) cachedData.knowledgeGini = unwrap(getKnowledgeGini(), 'knowledgeGini');
+            if (!cachedData.expertiseProfile) cachedData.expertiseProfile = unwrap(getExpertiseProfile(), 'expertiseProfile');
+            if (!cachedData.cognitiveLoad) cachedData.cognitiveLoad = unwrap(getCognitiveLoad(), 'cognitiveLoad');
             break;
     }
 }
